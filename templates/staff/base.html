@@ -1,0 +1,42 @@
+<!-- templates/staff/base.html -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>HR & Equipment</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Подключаем Heroicons для иконок -->
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body class="bg-gray-50">
+  <!-- Навигация в виде закладок (табов) -->
+  <div class="border-b border-gray-100">
+    <nav class="container mx-auto px-2 -mb-px flex flex-wrap" aria-label="Навигация">
+      <a href="{% url 'dashboard' %}" class="inline-block py-4 px-6 text-center border-b-2 font-medium text-sm {% if request.resolver_match.url_name == 'dashboard' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">
+        Главная
+      </a>
+      <a href="{% url 'employees_list' %}" class="inline-block py-4 px-6 text-center border-b-2 font-medium text-sm {% if request.resolver_match.url_name == 'employees_list' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">
+        Сотрудники
+      </a>
+      <a href="{% url 'equipment_list' %}" class="inline-block py-4 px-6 text-center border-b-2 font-medium text-sm {% if request.resolver_match.url_name == 'equipment_list' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">
+        Оборудование
+      </a>
+      <!-- ✅ Новая вкладка Provisioning -->
+      <a href="{% url 'provisioning_dashboard' %}" class="inline-block py-4 px-6 text-center border-b-2 font-medium text-sm {% if request.resolver_match.url_name == 'provisioning_dashboard' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">
+        Provisioning
+      </a>
+      <a href="/admin/" class="inline-block py-4 px-6 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+        Админка
+      </a>
+    </nav>
+  </div>
+
+  <!-- Основное содержимое -->
+  <div class="container mx-auto px-1 py-1">
+    {% block content %}{% endblock %}
+  </div>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

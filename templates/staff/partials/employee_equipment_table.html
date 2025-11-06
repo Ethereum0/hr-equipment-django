@@ -1,0 +1,32 @@
+<!-- templates/staff/partials/employee_equipment_table.html -->
+
+{% if equipment_list %}
+  <div class="overflow-x-auto">
+    <table class="min-w-full bg-white border">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="py-2 px-4 text-left">Тип ТМЦ</th>
+          <th class="py-2 px-4 text-left">Модель</th>
+          <th class="py-2 px-4 text-left">Серийный номер</th>
+          <th class="py-2 px-4 text-left">MAC адрес</th>
+          <th class="py-2 px-4 text-left">(SIP) IP/AnyDesk</th>
+          <th class="py-2 px-4 text-left">Комментарий</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for eq in equipment_list %}
+        <tr class="border-t">
+          <td class="py-2 px-4">{{ eq.get_type_display }}</td>
+          <td class="py-2 px-4">{{ eq.model|default:"—" }}</td>
+          <td class="py-2 px-4">{{ eq.serial_number|default:"—" }}</td>
+          <td class="py-2 px-4">{{ eq.mac_address|default:"—" }}</td>
+          <td class="py-2 px-4">{{ eq.ip_or_anydesk|default:"—" }}</td>
+          <td class="py-2 px-4">{{ eq.comment|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-gray-600 text-center">Нет закрепленного оборудования.</p>
+{% endif %}

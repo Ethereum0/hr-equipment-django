@@ -1,0 +1,340 @@
+{% extends 'staff/base.html' %}
+{% load staff_extras %}
+{% block content %}
+
+<h2 class="text-xl font-bold mb-4">
+  {% if form.instance.pk %}Редактировать{% else %}Добавить{% endif %} сотрудника
+</h2>
+
+<!-- Sticky кнопки сверху -->
+<div class="flex gap-3 justify-end sticky top-0 z-50 bg-white p-2 border-b">
+  <div id="save_message" class="text-sm mt-2"></div>
+  <button type="button" id="save-btn" class="px-4 py-2 bg-blue-600 text-white rounded">Сохранить</button>
+  <button type="button" id="close-btn" class="px-4 py-2 bg-gray-200 rounded text-gray-700">Закрыть</button>
+</div>
+
+
+<form method="post" id="employee-form">
+  {% csrf_token %}
+  <div class="grid grid-cols-3 gap-4 mt-2">
+
+    <!-- ЛЕВАЯ КОЛОНКА 1/3: Фото + Статус + ФИО -->
+    <div class="col-span-1 flex flex-col gap-4">
+      <fieldset class="border p-4 flex-1">
+        <legend class="font-medium">Фото и статус</legend>
+        <div class="flex flex-col items-center">
+          {% if form.instance.ad_login %}
+            {% if form.instance.email %}
+              {% with photo_url="https://p-el.ru/mail-photos/"|add:form.instance.email|add:".jpg" %}
+                <img src="{{ photo_url }}" alt="Фото {{ form.instance.fio }}" class="w-32 h-32 object-cover rounded mb-3" onerror="this.onerror=null;this.src='/static/images/no-photo-icon.png';">
+              {% endwith %}
+            {% else %}
+              {% with photo_url="https://p-el.ru/mail-photos/"|add:form.instance.ad_login|add:"@p-el.ru.jpg" %}
+                <img src="{{ photo_url }}" alt="Фото {{ form.instance.fio }}" class="w-32 h-32 object-cover rounded mb-3" onerror="this.onerror=null;this.src='/static/images/no-photo-icon.png';">
+              {% endwith %}
+            {% endif %}
+          {% else %}
+            <div class="w-32 h-32 bg-gray-200 rounded mb-3 flex items-center justify-center">
+              <span class="text-xs text-gray-500">Нет фото</span>
+            </div>
+          {% endif %}
+
+          <!-- ФИО -->
+          <div class="w-full mt-2">
+            <label class="text-xs text-gray-600">ФИО</label>
+            <input type="text" id="fio_field" name="fio" class="w-full px-2 py-1 border rounded" value="{% if form.instance.last_name %}{{ form.instance.last_name }} {% endif %}{% if form.instance.first_name %}{{ form.instance.first_name }} {% endif %}{% if form.instance.middle_name %}{{ form.instance.middle_name }}{% endif %}">
+          </div>
+
+          <!-- Статус -->
+          <div class="mt-3 w-full">
+            <label class="text-xs text-gray-600">Статус</label>
+            {{ form.status|add_class:"w-full px-2 py-1 rounded text-xs" }}
+          </div>
+
+          <!-- SIP readonly -->
+          <div class="mt-3 w-full">
+            <label class="text-xs text-gray-600">Номер SIP</label>
+            <span id="sip_preview" class="block px-2 py-1 text-gray-700">{{ form.sip_number.value }}</span>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+
+    <!-- ПРАВАЯ КОЛОНКА 2/3: Основная информация + Учетные данные -->
+    <div class="col-span-2 flex flex-col gap-4">
+
+      <!-- Основная информация -->
+      <fieldset class="border p-4">
+        <legend class="font-medium">Основная информация</legend>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="text-sm text-gray-600">First name</label>
+            {{ form.first_name|add_class:"w-full px-2 py-1 border rounded" }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Last name</label>
+            {{ form.last_name|add_class:"w-full px-2 py-1 border rounded" }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Middle name</label>
+            {{ form.middle_name|add_class:"w-full px-2 py-1 border rounded" }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Телефон</label>
+            {{ form.phone|add_class:"w-full px-2 py-1 border rounded" }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Должность</label>
+            {{ form.position|add_class:"w-full px-2 py-1 border rounded" }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Отдел</label>
+            {{ form.department|add_class:"w-full px-2 py-1 border rounded" }}
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Руководитель</label>
+            {{ form.supervisor|add_class:"w-full px-2 py-1 border rounded" }}
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-sm text-gray-600">Офис</label>
+              {{ form.office|add_class:"w-full px-2 py-1 border rounded" }}
+            </div>
+            <div>
+              <label class="text-sm text-gray-600">Дата приема</label>
+              {{ form.hire_date|add_class:"w-full px-2 py-1 border rounded" }}
+            </div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Дата увольнения</label>
+            {{ form.dismissal_date|add_class:"w-full px-2 py-1 border rounded" }}
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- Учетные данные -->
+      <fieldset class="border p-4">
+        <legend class="font-medium">Учетные данные (редактируемые)</legend>
+        <div class="grid grid-cols-6 gap-3">
+
+          <!-- AD -->
+          <div class="border rounded-lg p-3 bg-blue-50 border-blue-200">
+            <h3 class="text-sm font-medium text-blue-800 mb-2">AD</h3>
+            <div class="space-y-2">
+              <div>
+                <label class="text-xs text-gray-500">Логин</label>
+                <input type="text" id="ad_login_field" name="{{ form.ad_login.html_name }}" value="{{ form.ad_login.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" oninput="updateADPrefix()">
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Пароль</label>
+                <input type="text" name="{{ form.ad_password.html_name }}" value="{{ form.ad_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="border rounded-lg p-3 bg-green-50 border-green-200">
+            <h3 class="text-sm font-medium text-green-800 mb-2">Email</h3>
+            <div class="space-y-2">
+              <div>
+                <label class="text-xs text-gray-500">Email</label>
+                {{ form.email|add_class:"w-full px-2 py-1 border rounded" }}
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Пароль</label>
+                <input type="text" name="{{ form.email_password.html_name }}" value="{{ form.email_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              </div>
+            </div>
+          </div>
+
+          <!-- SIP / 3CX -->
+          <div class="border rounded-lg p-3 bg-purple-50 border-purple-200">
+            <h3 class="text-sm font-medium text-purple-800 mb-2">SIP / 3CX</h3>
+            <div class="space-y-2">
+              <div>
+                <label class="text-xs text-gray-500">Номер SIP</label>
+                {{ form.sip_number|add_class:"w-full px-2 py-1 border rounded" }}
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Логин 3CX</label>
+                {{ form.web_3cx|add_class:"w-full px-2 py-1 border rounded" }}
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Пароль 3CX</label>
+                <input type="text" name="{{ form.pass_3cx.html_name }}" value="{{ form.pass_3cx.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Б24 -->
+          <div class="border rounded-lg p-3 bg-amber-50 border-amber-200">
+            <h3 class="text-sm font-medium text-amber-800 mb-2">Б24</h3>
+            <div class="space-y-2">
+              <div>
+                <label class="text-xs text-gray-500">Логин</label>
+                {{ form.b24_login|add_class:"w-full px-2 py-1 border rounded" }}
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Пароль</label>
+                <input type="text" name="{{ form.b24_password.html_name }}" value="{{ form.b24_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Телефония Б24 -->
+          <div class="border rounded-lg p-3 bg-cyan-50 border-cyan-200">
+            <h3 class="text-sm font-medium text-cyan-800 mb-2">Телефония Б24</h3>
+            <div class="space-y-2">
+              <div>
+                <label class="text-xs text-gray-500">Логин</label>
+                {{ form.tel_b24_login|add_class:"w-full px-2 py-1 border rounded" }}
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Пароль</label>
+                <input type="text" name="{{ form.tel_b24_password.html_name }}" value="{{ form.tel_b24_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              </div>
+            </div>
+          </div>
+
+          <!-- ВАТС -->
+          <div class="border rounded-lg p-3 bg-red-50 border-red-200">
+            <h3 class="text-sm font-medium text-red-800 mb-2">ВАТС</h3>
+            <div class="space-y-2">
+              <div>
+                <label class="text-xs text-gray-500">Логин</label>
+                {{ form.vats_login|add_class:"w-full px-2 py-1 border rounded" }}
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Пароль</label>
+                <input type="text" name="{{ form.vats_password.html_name }}" value="{{ form.vats_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </fieldset>
+    </div>
+  </div>
+
+  <!-- Доп. информация -->
+  <fieldset class="border p-4 mt-4">
+    <legend class="font-medium">Дополнительная информация</legend>
+    {{ form.info|add_class:"w-full px-2 py-2 border rounded resize-y min-h-[40px]" }}
+  </fieldset>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const form = document.getElementById("employee-form");
+  const saveBtn = document.getElementById("save-btn");
+  const closeBtn = document.getElementById("close-btn");
+
+  // Сохраняем исходные данные
+  let initialData = new FormData(form);
+
+  function isFormChanged() {
+    const currentData = new FormData(form);
+    for (let [key, value] of currentData.entries()) {
+      if (value !== initialData.get(key)) return true;
+    }
+    return false;
+  }
+
+  function updateSaveButton() {
+    if (isFormChanged()) {
+      saveBtn.classList.add("bg-green-600", "font-bold");
+      saveBtn.classList.remove("bg-blue-600");
+    } else {
+      saveBtn.classList.remove("bg-green-600", "font-bold");
+      saveBtn.classList.add("bg-blue-600");
+    }
+  }
+
+  // Следим за изменениями в форме
+  form.addEventListener("input", updateSaveButton);
+
+  // Кнопка закрыть
+  closeBtn.addEventListener("click", function() {
+    if (isFormChanged()) {
+      if (!confirm("Есть несохранённые изменения. Закрыть форму?")) return;
+    }
+    window.location.href = "{% url 'employees_list' %}";
+  });
+
+// AJAX сохранение
+saveBtn.addEventListener("click", function() {
+    const msg = document.getElementById("save_message");
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", window.location.href);
+    xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+    xhr.setRequestHeader("X-CSRFToken", document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            msg.textContent = "✅ Сохранено";
+            msg.className = "text-green-900 text-sm mt-3";
+
+            // фиксируем новые данные как "исходные"
+            initialData = new FormData(form);
+            updateSaveButton();
+
+            setTimeout(() => { msg.textContent = ""; }, 3000);
+
+        } else {
+            msg.textContent = "❌ Ошибка сохранения";
+            msg.className = "text-red-600 text-sm mt-2";
+        }
+    };
+
+    xhr.send(new FormData(form));
+});
+
+
+  // ФИО и AD Login синхронизация
+  const fioField = document.getElementById("fio_field");
+  const lastField = document.getElementById("id_last_name");
+  const firstField = document.getElementById("id_first_name");
+  const middleField = document.getElementById("id_middle_name");
+  const adLoginField = document.getElementById("ad_login_field");
+
+  fioField.addEventListener("input", () => {
+    const parts = fioField.value.trim().split(" ");
+    lastField.value = parts[0] || "";
+    firstField.value = parts[1] || "";
+    middleField.value = parts[2] || "";
+  });
+
+  [lastField, firstField, middleField].forEach(field => {
+    field.addEventListener("input", () => {
+      let parts = [lastField.value, firstField.value, middleField.value].filter(p => p);
+      fioField.value = parts.join(" ");
+    });
+  });
+
+  window.updateADPrefix = function() {
+    adLoginField.value = adLoginField.value.replace(/^CORP\\/, "");
+    const displayVal = "CORP\\" + adLoginField.value;
+    adLoginField.dataset.display = displayVal;
+  }
+});
+</script>
+
+<style>
+  input[type="text"], input[type="email"], input[type="date"], select, textarea {
+    box-sizing: border-box;
+  }
+
+  #save-btn.bg-green-600 {
+  background-color: #16a34a; /* зеленый */
+  font-weight: bold;
+}
+
+</style>
+
+
+
+
+
+
+{% endblock %}

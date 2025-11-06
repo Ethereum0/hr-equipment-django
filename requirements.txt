@@ -1,0 +1,22 @@
+# === Django Core ===
+Django==4.2.25
+asgiref>=3.7
+sqlparse>=0.5
+tzdata>=2024.1
+
+# === Excel / Импорт файлов ===
+pandas==2.2.2
+openpyxl==3.1.5
+
+# === HTTP / API ===
+requests==2.32.3
+
+# === Для красивых шаблонов (если Tailwind используется) ===
+django-tailwind==3.8.0
+
+# === Безопасность и удобство ===
+python-dotenv==1.0.1
+
+# === Вспомогательное (для будущих расширений) ===
+django-crispy-forms==2.3
+crispy-tailwind==1.0.3

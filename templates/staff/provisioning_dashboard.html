@@ -1,0 +1,534 @@
+<!-- templates/staff/provisioning_dashboard.html -->
+{% extends 'staff/base.html' %}
+
+{% block content %}
+<div class="p-6 space-y-6">
+  <h1 class="text-2xl font-bold mb-6">🔧 Provisioning</h1>
+
+  <!-- === ГРУППА 1: Выбор сотрудника === -->
+  <form method="get" class="p-2 border rounded bg-white shadow-sm">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+      <div>
+        <label for="employee-select" class="block text-sm font-medium text-gray-700 mb-1">
+          Выберите активного сотрудника
+        </label>
+        <select id="employee-select" name="employee_id" class="w-full px-3 py-2 border rounded">
+          <option value="">-- Выберите сотрудника --</option>
+          {% for emp in active_employees %}
+            <option value="{{ emp.id }}" {% if selected_employee and selected_employee.id == emp.id %}selected{% endif %}>{{ emp.fio }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          Показать оборудование
+        </button>
+        <a href="{% url 'provisioning_dashboard' %}" class="ml-2 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+          Сбросить
+        </a>
+      </div>
+    </div>
+  </form>
+
+{% if selected_employee %}
+  <!-- === ГРУППА 2: Таблица оборудования === -->
+  <div class="p-2 border rounded bg-white shadow-sm">
+    <h2 class="text-xl font-semibold mb-4">Оборудование: {{ selected_employee.fio }}</h2>
+
+    {% if sip_phones %}
+<div class="overflow-x-auto mb-6">
+  <table class="min-w-full bg-white border" id="sip-table">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="py-2 px-4 text-left">Выбор</th>
+        <th class="py-2 px-4 text-left">Тип ТМЦ</th>
+        <th class="py-2 px-4 text-left">Модель</th>
+        <th class="py-2 px-4 text-left">Серийный №</th>
+        <th class="py-2 px-4 text-left">MAC адрес</th>
+        <th class="py-2 px-4 text-left">(SIP) IP/AnyDesk</th>
+        <th class="py-2 px-4 text-left">Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for eq in sip_phones %}
+        <tr class="border-t sip-phone-row {% if forloop.first %}selected-phone bg-blue-50{% endif %}" 
+            data-eqid="{{ eq.id }}" 
+            data-mac="{{ eq.mac_address|default:'' }}"
+            data-ip="{{ eq.ip_or_anydesk|default:'' }}"
+            data-model="{{ eq.model|default:'' }}">
+          <!-- Выбор телефона -->
+          <td class="py-2 px-4">
+            <input type="radio" name="selected_phone" value="{{ eq.id }}" 
+                   {% if forloop.first %}checked{% endif %}
+                   class="phone-selector">
+          </td>
+          
+          <!-- Тип ТМЦ -->
+          <td class="py-2 px-4 type-cell">{{ eq.get_type_display }}</td>
+
+          <!-- Модель -->
+          <td class="py-2 px-4 model-cell">
+            <span class="view">{{ eq.model|default:"—" }}</span>
+            <input class="edit hidden w-full px-2 py-1 border rounded text-sm" name="model" value="{{ eq.model|default_if_none:'' }}">
+          </td>
+
+          <!-- Серийный номер -->
+          <td class="py-2 px-4 serial-cell">
+            <span class="view">{{ eq.serial_number|default:"—" }}</span>
+            <input class="edit hidden w-full px-2 py-1 border rounded text-sm" name="serial_number" value="{{ eq.serial_number|default_if_none:'' }}">
+          </td>
+
+          <!-- MAC адрес -->
+          <td class="py-2 px-4 mac-cell">
+            <span class="view">{{ eq.mac_address|default:"—" }}</span>
+            <input class="edit hidden w-full px-2 py-1 border rounded text-sm" name="mac_address" value="{{ eq.mac_address|default_if_none:'' }}">
+          </td>
+
+          <!-- IP / AnyDesk -->
+          <td class="py-2 px-4 ip-cell">
+            <span class="view">{{ eq.ip_or_anydesk|default:"—" }}</span>
+            <input class="edit hidden w-full px-2 py-1 border rounded text-sm" name="ip_or_anydesk" value="{{ eq.ip_or_anydesk|default_if_none:'' }}">
+          </td>
+
+          <!-- Действия -->
+          <td class="py-2 px-4">
+            <div class="flex gap-2">
+              <button class="btn-edit px-2 py-1 bg-yellow-400 rounded text-sm">Редактировать</button>
+              <button class="btn-save hidden px-2 py-1 bg-green-600 text-white rounded text-sm">Сохранить</button>
+              <button class="btn-cancel hidden px-2 py-1 bg-gray-300 rounded text-sm">Отмена</button>
+              <div class="mt-1 text-xs text-green-600 success-msg hidden">Сохранено</div>
+              <div class="mt-1 text-xs text-red-600 error-msg hidden"></div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+    {% else %}
+      <p class="text-gray-600 mb-6">Нет закрепленных SIP-телефонов.</p>
+    {% endif %}
+  </div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- === ГРУППА 3: Генерация конфигурации === -->
+  <div class="p-4 border rounded bg-white shadow-sm">
+    <h2 class="text-lg font-semibold mb-4">⚙️ Генерация конфигурации</h2>
+    
+    <!-- Отображение выбранного MAC-адреса -->
+    <div class="mb-4 p-3 bg-gray-50 rounded border">
+      <p class="text-sm text-gray-600">Выбранное устройство:</p>
+      <p class="font-mono text-sm" id="config-selected-mac">—</p>
+    </div>
+
+    <div class="flex items-center gap-3 mb-3">
+      <button id="generate-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        🔧 Сгенерировать
+      </button>
+
+      <button id="save-btn" class="bg-green-500 text-white px-4 py-2 rounded hidden">
+        💾 Сохранить
+      </button>
+    </div>
+
+    <textarea id="config-output" rows="8" class="w-full border p-2 font-mono text-sm" placeholder="Результат генерации..."></textarea>
+  </div>
+
+  <!-- === ГРУППА 4: Экран SIP-телефона === -->
+  <div class="p-4 border rounded bg-white shadow-sm">
+    <h2 class="text-lg font-semibold mb-4">📷 Экран SIP-телефона</h2>
+
+    <!-- Отображение выбранного MAC-адреса -->
+    <div class="mb-4 p-3 bg-gray-50 rounded border">
+      <p class="text-sm text-gray-600">Выбранное устройство:</p>
+      <p class="font-mono text-sm" id="sip-selected-mac">—</p>
+    </div>
+
+    <!-- Login/Password -->
+    <div class="flex items-center gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Login</label>
+        <input type="text" id="sip-login" value="admin" class="border px-2 py-1 rounded w-32">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <input type="text" id="sip-password" value="admin" class="border px-2 py-1 rounded w-32">
+      </div>
+      <button id="btn-sip-screen" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 mt-5">
+        🖼 Показать экран
+      </button>
+      <div class="flex gap-2">
+        <button class="sip-cmd bg-purple-500 text-white px-3 py-2 rounded mt-4" data-cmd="DNDOn">⏹ DNDon</button>
+        <button class="sip-cmd bg-purple-500 text-white px-3 py-2 rounded mt-4" data-cmd="DNDOff">⏹ DNDOff</button>
+      </div>
+    </div>
+
+    <!-- Управление устройством -->
+    <div class="flex flex-col lg:flex-row items-start gap-6">
+      <!-- Левая панель команд -->
+      <div class="flex flex-col gap-2">
+        <button class="sip-cmd bg-yellow-500 text-white px-3 py-1 rounded" data-cmd="Reboot">🔁 Reboot</button>
+        <button class="sip-cmd bg-red-500 text-white px-3 py-1 rounded" data-cmd="Reset">⚙️ Reset</button>
+        <button class="sip-cmd bg-green-600 text-white px-3 py-1 rounded" data-cmd="AutoP">⚡ AutoP</button>
+      </div>
+
+      <!-- Центр: экран -->
+      <div id="sip-screen-section" class="border rounded shadow-md w-[350px] h-auto">
+        <img id="sip-screen-img" src="\static\images\no_sip.png" alt="SIP экран" class="border rounded shadow-md w-[350px] h-auto">
+        <div class="flex gap-4">
+          <button class="sip-cmd bg-gray-500 text-white px-4 py-1 rounded mt-1" data-cmd="F1">⏹ F1</button>
+          <button class="sip-cmd bg-gray-500 text-white px-4 py-1 rounded mt-1" data-cmd="F2">⏹ F2</button>
+          <button class="sip-cmd bg-gray-500 text-white px-4 py-1 rounded mt-1" data-cmd="F3">⏹ F3</button>
+          <button class="sip-cmd bg-gray-500 text-white px-4 py-1 rounded mt-1" data-cmd="F4">⏹ F4</button>
+        </div>
+      </div>
+
+      <!-- Правая панель навигации -->
+      <div class="flex flex-col items-center gap-2">
+        <button class="sip-cmd bg-gray-400 px-3 py-1 rounded" data-cmd="UP">⬆️</button>
+        <div class="flex gap-2">
+          <button class="sip-cmd bg-gray-400 px-3 py-1 rounded" data-cmd="LEFT">⬅️</button>
+          <button class="sip-cmd bg-blue-500 text-white px-3 py-1 rounded" data-cmd="OK">🆗</button>
+          <button class="sip-cmd bg-gray-400 px-3 py-1 rounded" data-cmd="RIGHT">➡️</button>
+        </div>
+        <button class="sip-cmd bg-gray-400 px-3 py-1 rounded" data-cmd="DOWN">⬇️</button>
+        <button class="sip-cmd bg-orange-500 text-white px-3 py-1 rounded" data-cmd="MENU">📋 Menu</button>
+        <button class="sip-cmd bg-pink-500 text-white px-3 py-1 rounded" data-cmd="BACK_IDLE">🔙 Back Idle</button>
+      </div>
+    </div>
+  </div>
+</div>  
+
+{% endif %}
+</div>
+
+<!-- =================== SCRIPTS =================== -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("== provisioning dashboard script STARTED ==");
+
+  // === Переменные для хранения выбранного телефона ===
+  let selectedPhoneId = null;
+  let selectedPhoneMac = '';
+  let selectedPhoneIp = '';
+  let selectedPhoneModel = '';
+
+  // === Элементы для отображения MAC-адреса ===
+  const configSelectedMac = document.getElementById("config-selected-mac");
+  const sipSelectedMac = document.getElementById("sip-selected-mac");
+
+  // === Функция обновления выбранного телефона ===
+  function updateSelectedPhone() {
+    const selectedRadio = document.querySelector('input[name="selected_phone"]:checked');
+    if (selectedRadio) {
+      const row = selectedRadio.closest('.sip-phone-row');
+      selectedPhoneId = row.dataset.eqid;
+      selectedPhoneMac = row.dataset.mac || '—';
+      selectedPhoneIp = row.dataset.ip || '';
+      selectedPhoneModel = row.dataset.model || '';
+
+      // Обновляем отображение MAC-адреса
+      configSelectedMac.textContent = selectedPhoneMac;
+      sipSelectedMac.textContent = selectedPhoneMac;
+
+      // Обновляем подсветку строк
+      document.querySelectorAll('.sip-phone-row').forEach(row => {
+        row.classList.remove('selected-phone', 'bg-blue-50');
+      });
+      row.classList.add('selected-phone', 'bg-blue-50');
+    }
+  }
+
+  // === Обработчики выбора телефона ===
+  document.querySelectorAll('.phone-selector').forEach(radio => {
+    radio.addEventListener('change', updateSelectedPhone);
+  });
+
+  // Инициализация при загрузке
+  updateSelectedPhone();
+
+  // === 🔐 CSRF ===
+  function getCookie(name) {
+    const cookies = document.cookie.split(";").map(c => c.trim());
+    for (let cookie of cookies) {
+      if (cookie.startsWith(name + "=")) return decodeURIComponent(cookie.split("=")[1]);
+    }
+    return null;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // === ⚙️ Генерация конфигурации (обновленная) ===
+  document.getElementById("generate-btn").addEventListener("click", async () => {
+    const employeeId = document.getElementById("employee-select").value;
+    if (!employeeId) {
+      document.getElementById("config-output").value = "❌ Выберите сотрудника.";
+      return;
+    }
+
+    if (!selectedPhoneId) {
+      document.getElementById("config-output").value = "❌ Выберите SIP-телефон.";
+      return;
+    }
+
+    document.getElementById("config-output").value = "⏳ Генерация конфигурационного файла...";
+    document.getElementById("save-btn").classList.add("hidden");
+
+    try {
+      const resp = await fetch("{% url 'generate_config' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+        body: new URLSearchParams({ 
+          employee_id: employeeId,
+          equipment_id: selectedPhoneId 
+        })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        currentConfig = data.config;
+        currentFilename = data.filename;
+        document.getElementById("config-output").value = data.config;
+        document.getElementById("save-btn").classList.remove("hidden");
+      } else {
+        document.getElementById("config-output").value = "❌ " + (data.message || "Ошибка формирования файла.");
+      }
+    } catch(e) {
+      document.getElementById("config-output").value = "⚠️ Ошибка: " + e.message;
+    }
+  });
+
+// === 💾 Простое и честное сохранение ===
+document.getElementById("save-btn").addEventListener("click", () => {
+    if (!currentConfig) {
+        alert("Нет данных для сохранения. Сначала сгенерируйте конфигурацию.");
+        return;
+    }
+
+    // Сразу сохраняем с понятным сообщением
+    const blob = new Blob([currentConfig], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = currentFilename;
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Честное сообщение о том, куда сохранится файл
+    alert(`✅ Конфигурация сохранена!\n\n` +
+          `Файл: ${currentFilename}\n` +
+          `Сохранен в: Папка "Загрузки"\n\n` +
+          `Для использования на TFTP сервере:\n` +
+          `Переместите файл в: Z:\\TEST\\\n` +
+          `TFTP путь: tftp://172.16.15.225/TEST/${currentFilename}`);
+});
+
+
+  // === 📷 Загрузка/Обновление экрана SIP (обновленная) ===
+  async function updateSipScreen() {
+    const employeeId = document.getElementById("employee-select").value;
+    if (!employeeId || !selectedPhoneId) {
+      alert("❌ Выберите сотрудника и SIP-телефон.");
+      return;
+    }
+
+    try {
+      const resp = await fetch(`/provisioning/sip_screen/?employee_id=${employeeId}&equipment_id=${selectedPhoneId}`);
+      const data = await resp.json();
+      if (data.success) {
+        document.getElementById("sip-screen-img").src = data.image_url + "?t=" + Date.now();
+        document.getElementById("sip-screen-section").classList.remove("hidden");
+      } else {
+        alert("⚠️ " + data.message);
+      }
+    } catch (e) {
+      console.error("Ошибка получения экрана SIP:", e);
+    }
+  }
+
+  document.getElementById("btn-sip-screen").addEventListener("click", updateSipScreen);
+
+  // === 🎛 Отправка команд на SIP (обновленная) ===
+  document.querySelectorAll(".sip-cmd").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const cmd = btn.dataset.cmd;
+      const employeeId = document.getElementById("employee-select").value;
+      
+      if (!employeeId || !selectedPhoneId) {
+        alert("❌ Выберите сотрудника и SIP-телефон.");
+        return;
+      }
+
+      try {
+        const resp = await fetch(`/provisioning/send_sip_command/`, {
+          method: "POST",
+          headers: { "X-CSRFToken": csrftoken },
+          body: new URLSearchParams({
+            employee_id: employeeId,
+            equipment_id: selectedPhoneId,
+            cmd: cmd,
+            login: document.getElementById("sip-login").value,
+            password: document.getElementById("sip-password").value,
+          }),
+        });
+        const data = await resp.json();
+        // 🔄 Автообновление экрана после команды
+        await updateSipScreen();
+      } catch(e) {
+        alert("Ошибка отправки команды: " + e.message);
+      }
+    });
+  });
+
+  // === Inline Edit таблицы SIP (остается без изменений) ===
+  const table = document.getElementById('sip-table');
+  if (table) {
+      table.querySelectorAll('tbody tr').forEach(row => {
+          const editBtn = row.querySelector('.btn-edit');
+          const saveBtn = row.querySelector('.btn-save');
+          const cancelBtn = row.querySelector('.btn-cancel');
+          const successMsg = row.querySelector('.success-msg');
+          const errorMsg = row.querySelector('.error-msg');
+
+          const cells = {
+              model: row.querySelector('.model-cell'),
+              serial_number: row.querySelector('.serial-cell'),
+              mac_address: row.querySelector('.mac-cell'),
+              ip_or_anydesk: row.querySelector('.ip-cell'),
+          };
+
+          let originalValues = {};
+
+          function enterEditMode() {
+              // Сохраняем оригинальные значения
+              originalValues = {};
+              for (const key in cells) {
+                  const view = cells[key].querySelector('.view');
+                  const input = cells[key].querySelector('.edit');
+                  originalValues[key] = view.textContent.trim();
+                  
+                  // Показываем input, скрываем view
+                  if (view) view.classList.add('hidden');
+                  if (input) {
+                      input.classList.remove('hidden');
+                      input.value = originalValues[key] === '—' ? '' : originalValues[key];
+                  }
+              }
+
+              // Переключаем кнопки
+              editBtn.classList.add('hidden');
+              saveBtn.classList.remove('hidden');
+              cancelBtn.classList.remove('hidden');
+              successMsg.classList.add('hidden');
+              errorMsg.classList.add('hidden');
+          }
+
+          function exitEditMode(restore = false) {
+              for (const key in cells) {
+                  const view = cells[key].querySelector('.view');
+                  const input = cells[key].querySelector('.edit');
+                  
+                  if (restore) {
+                      // Восстанавливаем оригинальные значения
+                      if (view) view.textContent = originalValues[key];
+                      if (input) input.value = originalValues[key] === '—' ? '' : originalValues[key];
+                  }
+                  
+                  // Показываем view, скрываем input
+                  if (view) view.classList.remove('hidden');
+                  if (input) input.classList.add('hidden');
+              }
+
+              // Переключаем кнопки
+              editBtn.classList.remove('hidden');
+              saveBtn.classList.add('hidden');
+              cancelBtn.classList.add('hidden');
+              successMsg.classList.add('hidden');
+              errorMsg.classList.add('hidden');
+          }
+
+          // Обработчики событий
+          editBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              enterEditMode();
+          });
+
+          cancelBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              exitEditMode(true); // Восстанавливаем оригинальные значения
+          });
+
+          saveBtn.addEventListener('click', async (e) => {
+              e.preventDefault();
+              
+              // Показываем загрузку
+              saveBtn.disabled = true;
+              saveBtn.textContent = 'Сохранение...';
+              errorMsg.classList.add('hidden');
+
+              try {
+                  const eqId = row.dataset.eqid;
+                  const formData = new FormData();
+                  formData.append('id', eqId);
+
+                  // Собираем данные из полей ввода
+                  for (const key in cells) {
+                      const input = cells[key].querySelector('.edit');
+                      formData.append(key, input ? input.value.trim() : '');
+                  }
+
+                  const resp = await fetch('{% url "update_equipment_inline" %}', {
+                      method: 'POST',
+                      headers: { 'X-CSRFToken': csrftoken },
+                      body: formData
+                  });
+
+                  const data = await resp.json();
+
+                  if (data.success) {
+                      // Обновляем view элементы новыми значениями
+                      for (const key in data.updated) {
+                          const view = cells[key].querySelector('.view');
+                          const value = data.updated[key] || '—';
+                          if (view) view.textContent = value;
+                      }
+
+                      successMsg.classList.remove('hidden');
+                      setTimeout(() => {
+                          exitEditMode(false); // Выходим из режима редактирования без восстановления
+                      }, 1000);
+                  } else {
+                      errorMsg.textContent = data.message || 'Ошибка сохранения';
+                      errorMsg.classList.remove('hidden');
+                  }
+              } catch (error) {
+                  errorMsg.textContent = 'Ошибка сети: ' + error.message;
+                  errorMsg.classList.remove('hidden');
+              } finally {
+                  saveBtn.disabled = false;
+                  saveBtn.textContent = 'Сохранить';
+              }
+          });
+      });
+  }
+  console.log("== provisioning dashboard script FINISHED ==");
+});
+</script>
+
+<style>
+.selected-phone {
+  background-color: #eff6ff !important;
+  border-left: 4px solid #3b82f6;
+}
+
+.sip-phone-row {
+  transition: background-color 0.2s ease;
+}
+
+.sip-phone-row:hover {
+  background-color: #f9fafb;
+}
+</style>
+{% endblock %}

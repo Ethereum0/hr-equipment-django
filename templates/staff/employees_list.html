@@ -1,0 +1,345 @@
+{% extends 'staff/base.html' %}
+
+{% block content %}
+<div class="flex h-screen">
+  <!-- Левая колонка: Список сотрудников -->
+  <div class="w-1/4 border-r overflow-y-auto flex flex-col" id="employee-list-column">
+
+    <!-- Поле поиска и фильтров -->
+    <div class="p-4 border-b">
+      <div class="mb-3 relative">
+        <label for="search-input" class="block text-sm font-medium text-gray-700 mb-1">Поиск</label>
+        <input type="text" id="search-input" placeholder="ФИО, логин, email, SIP..."
+               value="{{ query|default:'' }}"
+               class="w-full px-3 py-2 border rounded pr-8"
+               autocomplete="off">
+        <button id="clear-search" class="absolute right-2 top-8 text-gray-400 hover:text-gray-600">✕</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+        <div>
+          <label for="status-select" class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+          <select id="status-select" class="w-full px-3 py-2 border rounded">
+            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Все</option>
+            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Активный</option>
+            <option value="dismissed" {% if status_filter == 'dismissed' %}selected{% endif %}>Уволен</option>
+            <option value="maternity" {% if status_filter == 'maternity' %}selected{% endif %}>Декрет</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="office-select" class="block text-sm font-medium text-gray-700 mb-1">Офис</label>
+          <select id="office-select" class="w-full px-3 py-2 border rounded">
+            <option value="all" {% if office_filter == 'all' or office_filter == '' %}selected{% endif %}>Все</option>
+            {% for val, label in page_obj.paginator.object_list.model.OFFICE_CHOICES %}
+              <option value="{{ val }}" {% if office_filter == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Кнопка добавить -->
+      <div class="mt-2">
+        <a href="{% url 'employee_create' %}" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 block text-center">Добавить</a>
+      </div>
+    </div>
+
+    <!-- Список сотрудников -->
+    <ul class="flex-grow divide-y overflow-y-auto" id="employee-list">
+      {% for emp in page_obj %}
+      <li id="emp-{{ emp.id }}"
+          class="p-4 hover:bg-gray-100 cursor-pointer {% if selected_employee and selected_employee.id == emp.id %}bg-blue-100 border-l-4 border-blue-500{% endif %}"
+          data-status="{{ emp.status|default:'all' }}"
+          data-office="{{ emp.office|default:'all' }}"
+          data-ad-login="{{ emp.ad_login|default:'' }}"
+          data-email="{{ emp.email|default:'' }}"
+          data-sip="{{ emp.sip_number|default:'' }}"
+          hx-get="{% url 'employees_list' %}?selected_id={{ emp.id }}{% if query %}&q={{ query }}{% endif %}"
+          hx-target="#main-content-area"
+          hx-push-url="false"
+          onclick="selectEmployee('{{ emp.id }}')">
+        <div class="flex items-center">
+          {% if emp.ad_login %}
+            {% if emp.email %}
+              {% with photo_url="https://p-el.ru/mail-photos/"|add:emp.email|add:".jpg" %}
+                <img src="{{ photo_url }}" alt="Фото" class="w-10 h-12 object-cover rounded mr-3 employee-photo" onerror="this.style.display='none'">
+              {% endwith %}
+            {% else %}
+              {% with photo_url="https://p-el.ru/mail-photos/"|add:emp.ad_login|add:"@p-el.ru.jpg" %}
+                <img src="{{ photo_url }}" alt="Фото" class="w-10 h-12 object-cover rounded mr-3 employee-photo" onerror="this.style.display='none'">
+              {% endwith %}
+            {% endif %}
+          {% else %}
+            <div class="w-10 h-10 bg-gray-200 rounded mr-3 flex items-center justify-center">
+              <span class="text-xs text-gray-500">Нет фото</span>
+            </div>
+          {% endif %}
+          <div>
+            <div class="font-medium emp-name">{{ emp.fio }}</div>
+            <div class="text-sm text-gray-600 emp-position">{{ emp.position|default:"—" }}</div>
+            <div class="text-xs emp-meta">
+              <span class="px-1 py-0.5 rounded {{ emp.get_status_badge_class }}">{{ emp.get_status_display }}</span>
+              <span class="ml-1 emp-office">{{ emp.get_office_display }}</span>
+              <div class="text-xs text-gray-500 emp-login">{{ emp.ad_login|default:'' }}{% if emp.email %} • {{ emp.email }}{% endif %}{% if emp.sip_number %} • SIP: {{ emp.sip_number }}{% endif %}</div>
+            </div>
+          </div>
+        </div>
+      </li>
+      {% empty %}
+      <li class="p-4 text-center text-gray-500 no-emp-msg">Нет сотрудников</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Правая колонка: Карточка сотрудника и оборудование -->
+  <div id="main-content-area" class="w-3/4 flex flex-col overflow-hidden">
+    {% if selected_employee %}
+      <div class="border-b p-6 overflow-y-auto flex-shrink-0">
+        {% include 'staff/employee_detail_card.html' with employee=selected_employee %}
+      </div>
+
+      <div class="flex-grow overflow-y-auto p-6">
+        <h3 class="text-lg font-semibold mb-4">Оборудование</h3>
+        {% if selected_employee.equipment_set.all %}
+          <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+              <thead class="bg-gray-100">
+                <tr>
+                  <th class="py-2 px-4 text-left">Тип ТМЦ</th>
+                  <th class="py-2 px-4 text-left">Модель</th>
+                  <th class="py-2 px-4 text-left">Серийный номер</th>
+                  <th class="py-2 px-4 text-left">MAC адрес</th>
+                  <th class="py-2 px-4 text-left">(SIP) IP/AnyDesk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for eq in selected_employee.equipment_set.all %}
+                <tr class="border-t">
+                  <td class="py-2 px-4">{{ eq.get_type_display }}</td>
+                  <td class="py-2 px-4">{{ eq.model|default:"—" }}</td>
+                  <td class="py-2 px-4">{{ eq.serial_number|default:"—" }}</td>
+                  <td class="py-2 px-4">{{ eq.mac_address|default:"—" }}</td>
+                  <td class="py-2 px-4">{{ eq.ip_or_anydesk|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-gray-600">Нет закрепленного оборудования.</p>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="p-8 text-center text-gray-500 flex-grow flex items-center justify-center">
+        Выберите сотрудника из списка, чтобы увидеть детали.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Подключение HTMX (оставляем как есть) -->
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // --- Помощники ---
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function debounce(fn, wait) {
+    let t;
+    return function(...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), wait);
+    };
+  }
+
+  function saveFiltersToStorage(query, status, office) {
+    try {
+      localStorage.setItem('emp_search_q', query);
+      localStorage.setItem('emp_search_status', status);
+      localStorage.setItem('emp_search_office', office);
+    } catch (e) { /* ignore */ }
+  }
+  function loadFiltersFromStorage() {
+    try {
+      return {
+        q: localStorage.getItem('emp_search_q') || '',
+        status: localStorage.getItem('emp_search_status') || null,
+        office: localStorage.getItem('emp_search_office') || null
+      };
+    } catch (e) {
+      return { q: '', status: null, office: null };
+    }
+  }
+
+  // --- Select employee highlighting (used when clicking list item) ---
+  window.selectEmployee = function(empId) {
+    document.querySelectorAll('#employee-list li').forEach(li => li.classList.remove('bg-blue-100','border-l-4','border-blue-500'));
+    const selected = document.getElementById('emp-' + empId);
+    if (selected) selected.classList.add('bg-blue-100','border-l-4','border-blue-500');
+  };
+
+  // --- Подсветка совпадений в элементе (без ломки вложенных тегов в наших простых полях) ---
+  function highlightElementText(el, term) {
+    if (!term) {
+      // убрать <mark>, вернуть plain text
+      el.innerHTML = el.textContent;
+      return;
+    }
+    const text = el.textContent;
+    const re = new RegExp(escapeRegExp(term), 'ig');
+    const replaced = text.replace(re, match => `<mark class="bg-yellow-200">${match}</mark>`);
+    el.innerHTML = replaced;
+  }
+
+  // --- Главное: фильтрация на фронтенде ---
+  function filterEmployeesImpl() {
+    const qInput = document.getElementById('search-input');
+    const statusSelect = document.getElementById('status-select');
+    const officeSelect = document.getElementById('office-select');
+
+    const rawQuery = (qInput.value || '').trim();
+    const query = rawQuery.toLowerCase();
+    const status = (statusSelect.value || 'all').toLowerCase();
+    const office = (officeSelect.value || 'all').toLowerCase();
+
+    // Сохраняем фильтры
+    saveFiltersToStorage(rawQuery, status, office);
+
+    const list = document.getElementById('employee-list');
+    if (!list) return;
+    let anyVisible = false;
+
+    // Разбиваем на части (по словам)
+    const parts = query.split(/\s+/).filter(Boolean);
+
+    list.querySelectorAll('li').forEach(li => {
+      // Не трогаем служебные .no-emp-msg
+      if (li.classList.contains('no-emp-msg')) return;
+
+      const text = li.textContent.toLowerCase();
+      const empStatus = (li.dataset.status || '').toLowerCase();
+      const empOffice = (li.dataset.office || '').toLowerCase();
+      const empAd = (li.dataset.adLogin || li.dataset.adLogin === '' ? li.dataset.adLogin : li.getAttribute('data-ad-login')) || (li.dataset.adLogin || '');
+      // But ensure we read dataset correctly
+      const adLogin = (li.getAttribute('data-ad-login') || '').toLowerCase();
+      const email = (li.getAttribute('data-email') || '').toLowerCase();
+      const sip = (li.getAttribute('data-sip') || '').toLowerCase();
+
+      // Проверки статуса/офиса (если заданы)
+      if (status !== 'all' && empStatus !== status) {
+        li.style.display = 'none';
+        return;
+      }
+      if (office !== 'all' && empOffice !== office) {
+        li.style.display = 'none';
+        return;
+      }
+
+      // Поиск: для каждого словa должен быть найден в одном из полей
+      let allPartsMatch = true;
+      parts.forEach(part => {
+        if (!part) return;
+        const matchesName = li.querySelector('.emp-name') && li.querySelector('.emp-name').textContent.toLowerCase().includes(part);
+        const matchesPosition = li.querySelector('.emp-position') && li.querySelector('.emp-position').textContent.toLowerCase().includes(part);
+        const matchesGenericText = text.includes(part);
+
+        // AD login: поддерживаем варианты хранения "CORP\john", "corp\john", "john"
+        const matchesAd = adLogin.includes(part) || adLogin.endsWith('\\' + part) || adLogin.endsWith('/' + part);
+
+        // Email: ищем как по полному email, так и по локальной части до @
+        let emailLocal = '';
+        if (email) {
+          const atIdx = email.indexOf('@');
+          emailLocal = atIdx !== -1 ? email.slice(0, atIdx) : email;
+        }
+        const matchesEmail = email.includes(part) || emailLocal.includes(part);
+
+        // SIP
+        const matchesSip = sip.includes(part);
+
+        const partMatches = matchesName || matchesPosition || matchesAd || matchesEmail || matchesSip || matchesGenericText;
+        if (!partMatches) allPartsMatch = false;
+      });
+
+      if (allPartsMatch) {
+        li.style.display = '';
+        anyVisible = true;
+
+        // подсветка — подсвечиваем совпадение в имени и в строке логинов
+        const nameEl = li.querySelector('.emp-name');
+        const loginEl = li.querySelector('.emp-login');
+
+        // убираем старую подсветку
+        if (nameEl) highlightElementText(nameEl, rawQuery);
+        if (loginEl) highlightElementText(loginEl, rawQuery);
+      } else {
+        li.style.display = 'none';
+        // убрать подсветку если скрыт
+        const nameEl = li.querySelector('.emp-name');
+        const loginEl = li.querySelector('.emp-login');
+        if (nameEl) nameEl.innerHTML = nameEl.textContent;
+        if (loginEl) loginEl.innerHTML = loginEl.textContent;
+      }
+    });
+
+    // Отобразить сообщение "Нет сотрудников" если ничего не найдено
+    const existingMsg = list.querySelector('.no-emp-msg');
+    if (!anyVisible) {
+      if (!existingMsg) {
+        const li = document.createElement('li');
+        li.className = 'p-4 text-center text-gray-500 no-emp-msg';
+        li.textContent = 'Нет сотрудников';
+        list.appendChild(li);
+      }
+    } else {
+      if (existingMsg) existingMsg.remove();
+    }
+  }
+
+  // Debounced version (плавный ввод)
+  const filterEmployees = debounce(filterEmployeesImpl, 200);
+
+  // --- События и восстановление состояний ---
+  const searchInput = document.getElementById('search-input');
+  const statusSelect = document.getElementById('status-select');
+  const officeSelect = document.getElementById('office-select');
+  const clearBtn = document.getElementById('clear-search');
+
+  // Восстановить фильтры из localStorage (если есть)
+  const stored = loadFiltersFromStorage();
+  if (stored) {
+    if (stored.q !== null && stored.q !== undefined && stored.q !== '') {
+      searchInput.value = stored.q;
+    }
+    if (stored.status) {
+      const opt = Array.from(statusSelect.options).find(o => o.value === stored.status);
+      if (opt) statusSelect.value = stored.status;
+    }
+    if (stored.office) {
+      const opt2 = Array.from(officeSelect.options).find(o => o.value === stored.office);
+      if (opt2) officeSelect.value = stored.office;
+    }
+  }
+
+  // Подписки
+  searchInput.addEventListener('input', filterEmployees);
+  statusSelect.addEventListener('change', filterEmployees);
+  officeSelect.addEventListener('change', filterEmployees);
+
+  clearBtn.addEventListener('click', function(){
+    searchInput.value = '';
+    filterEmployees();
+    // сохранить очищение
+    saveFiltersToStorage('', statusSelect.value, officeSelect.value);
+    searchInput.focus();
+  });
+
+  // Инициальная фильтрация (при загрузке)
+  filterEmployeesImpl();
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,39 @@
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+local_settings.py
+db.sqlite3
+media/
+staticfiles/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.secrets.py
+
+# Ваши специфичные файлы
+/ТМЦ макет.xlsx
+/Структура
+/certs/  # если это SSL сертификаты
+
+# Временные/конфиденциальные файлы
+*.xlsx
+*.backup
+*.tmp

@@ -1,0 +1,94 @@
+<!-- templates/staff/equipment_form.html -->
+
+{% extends 'staff/base.html' %}
+{% load form_filters %} 
+{% block content %}
+<h2 class="text-xl font-bold mb-4">{% if form.instance.pk %}Редактировать{% else %}Добавить{% endif %} оборудование</h2>
+
+<form method="post">
+  {% csrf_token %}
+  
+  <!-- Основная информация -->
+  <fieldset class="border p-4 mb-4">
+    <legend class="font-medium">Основная информация</legend>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="flex flex-col">
+        {{ form.type.label_tag }}
+        {{ form.type }}
+      </div>
+      <div class="flex flex-col">
+        {{ form.model.label_tag }}
+        {{ form.model }}
+      </div>
+      <div class="flex flex-col">
+        {{ form.serial_number.label_tag }}
+        {{ form.serial_number }}
+      </div>
+      <div class="flex flex-col">
+        {{ form.mac_address.label_tag }}
+        {{ form.mac_address }}
+      </div>
+      <div class="flex flex-col">
+        {{ form.ip_or_anydesk.label_tag }}
+        {{ form.ip_or_anydesk }}
+      </div>
+      <div class="flex flex-col">
+        {{ form.office.label_tag }}
+        {{ form.office }}
+      </div>
+      <div class="flex flex-col">
+        {{ form.employee.label_tag }}
+        {{ form.employee }}
+      </div>
+      <div class="flex flex-col">
+        {{ form.in_domain.label_tag }}
+        {{ form.in_domain }}
+      </div>
+      <div class="flex flex-col">
+        {{ form.disposed.label_tag }}
+        {{ form.disposed }}
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Дополнительная информация -->
+  <fieldset class="border p-4 mb-4">
+    <legend class="font-medium">Дополнительная информация</legend>
+    <div class="flex flex-col">
+      {{ form.comment.label_tag }}
+      <!-- Сделаем textarea растягиваемой -->
+      {{ form.comment|add_class:"resize-y min-h-[100px]" }}
+    </div>
+  </fieldset>
+
+  <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Сохранить</button>
+  <a href="{% url 'equipment_list' %}" class="mt-4 inline-block text-gray-600">Отмена</a>
+</form>
+
+<!-- Добавим немного CSS для растягивания input'ов -->
+<style>
+  /* Стили для растягивания input и select */
+  input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="number"], select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 0.25rem;
+    box-sizing: border-box; /* Включаем padding и border в общую ширину */
+  }
+  /* Стили для растягивания по вертикали textarea */
+  textarea {
+    resize: vertical; /* Позволяем растягивать только по вертикали */
+    min-height: 100px; /* Минимальная высота */
+  }
+  /* Стили для label */
+  label {
+    margin-bottom: 0.25rem;
+    display: block;
+    font-weight: bold;
+  }
+  /* Стили для checkbox'ов */
+  input[type="checkbox"] {
+    width: auto; /* Возвращаем стандартную ширину для чекбоксов */
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,13 @@
+<!-- templates/staff/equipment_confirm_delete.html -->
+
+{% extends 'staff/base.html' %}
+
+{% block content %}
+<h2 class="text-xl font-bold mb-4">Подтверждение удаления</h2>
+<p>Вы уверены, что хотите удалить оборудование: <strong>{{ equipment }}</strong>?</p>
+<form method="post">
+  {% csrf_token %}
+  <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded">Удалить</button>
+  <a href="{% url 'equipment_list' %}" class="ml-2 px-4 py-2 bg-gray-600 text-white rounded">Отмена</a>
+</form>
+{% endblock %}

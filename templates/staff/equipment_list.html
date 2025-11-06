@@ -1,0 +1,123 @@
+<!-- templates/staff/equipment_list.html -->
+
+{% extends 'staff/base.html' %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Оборудование (ТМЦ)</h1>
+
+<!-- Форма поиска и фильтров -->
+<form method="get" class="mb-4 grid grid-cols-1 md:grid-cols-5 gap-2">
+  <input type="text" name="q" value="{{ query }}" placeholder="Поиск..." class="px-3 py-2 border rounded">
+  <select name="type" class="px-3 py-2 border rounded">
+    <option value="">Все типы</option>
+    {% for val, label in equipment_types %}
+      <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select name="office" class="px-3 py-2 border rounded">
+    <option value="">Все офисы</option>
+    {% for val, label in office_choices %}
+      <option value="{{ val }}" {% if office_filter == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select name="disposed" class="px-3 py-2 border rounded">
+    <option value="">Все</option>
+    <option value="true" {% if disposed_filter == 'true' %}selected{% endif %}>Списано</option>
+    <option value="false" {% if disposed_filter == 'false' %}selected{% endif %}>Не списано</option>
+  </select>
+  
+  <!-- ✅ Новый фильтр: Закреплено/Свободно -->
+  <select name="assigned" class="px-3 py-2 border rounded">
+    <option value="">Все</option>
+    <option value="true" {% if assigned_filter == 'true' %}selected{% endif %}>Закреплено</option>
+    <option value="false" {% if assigned_filter == 'false' %}selected{% endif %}>Свободное</option>
+  </select>
+  
+  <div class="flex gap-2">
+    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Фильтровать</button>
+    <a href="{% url 'equipment_create' %}" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Добавить ТМЦ</a>
+  </div>
+</form>
+
+<!-- Переключатель "Показывать" -->
+<div class="mb-4">
+  <label>Показывать: </label>
+  <a href="?{% if query %}q={{ query }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if office_filter %}office={{ office_filter }}&{% endif %}{% if disposed_filter %}disposed={{ disposed_filter }}&{% endif %}{% if assigned_filter %}assigned={{ assigned_filter }}&{% endif %}per_page=20" class="mx-1 {% if per_page == 20 %}font-bold{% endif %}">20</a> |
+  <a href="?{% if query %}q={{ query }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if office_filter %}office={{ office_filter }}&{% endif %}{% if disposed_filter %}disposed={{ disposed_filter }}&{% endif %}{% if assigned_filter %}assigned={{ assigned_filter }}&{% endif %}per_page=50" class="mx-1 {% if per_page == 50 %}font-bold{% endif %}">50</a> |
+  <a href="?{% if query %}q={{ query }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if office_filter %}office={{ office_filter }}&{% endif %}{% if disposed_filter %}disposed={{ disposed_filter }}&{% endif %}{% if assigned_filter %}assigned={{ assigned_filter }}&{% endif %}per_page=100" class="mx-1 {% if per_page == 100 %}font-bold{% endif %}">100</a>
+</div>
+
+<!-- Таблица оборудования -->
+<div class="overflow-x-auto">
+  <table class="min-w-full bg-white border">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="py-2 px-4 text-left">Тип</th>
+        <th class="py-2 px-4 text-left">Модель</th>
+        <th class="py-2 px-4 text-left">Серийный №</th>
+        <th class="py-2 px-4 text-left">Сотрудник</th>
+        <th class="py-2 px-4 text-left">Офис</th>
+        <th class="py-2 px-4 text-left">Списано</th>
+        <th class="py-2 px-4 text-left">Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for eq in page_obj %}
+      <tr class="border-t">
+        <td class="py-2 px-4">{{ eq.get_type_display }}</td>
+        <td class="py-2 px-4">{{ eq.model|default:"—" }}</td>
+        <td class="py-2 px-4">{{ eq.serial_number|default:"—" }}</td>
+        <td class="py-2 px-4">
+          <!-- ✅ Форма изменения сотрудника -->
+          <form method="post" action="{% url 'equipment_assign_employee' eq.pk %}" class="inline">
+            {% csrf_token %}
+            <!-- Скрытое поле для сохранения текущих фильтров -->
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <select name="employee_id" onchange="this.form.submit()" class="px-2 py-1 border rounded text-sm">
+              <option value="">Свободное</option>
+              {% for emp in all_employees %}
+                <option value="{{ emp.id }}" {% if eq.employee and eq.employee.id == emp.id %}selected{% endif %}>{{ emp.fio }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </td>
+        <td class="py-2 px-4">{{ eq.get_office_display }}</td>
+        <td class="py-2 px-4">{{ eq.disposed|yesno:"Да,Нет" }}</td>
+        <td class="py-2 px-4">
+          <button onclick="copyEquipment(`{{ eq.as_markdown|escapejs }}`)" class="text-sm text-blue-600">Копировать</button>
+          <a href="{% url 'equipment_edit' eq.pk %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="ml-2 text-sm text-gray-600">Редактировать</a>
+          <a href="{% url 'equipment_delete' eq.pk %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="ml-2 text-sm text-red-600">Удалить</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center py-4">Нет оборудования</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Пагинация -->
+<div class="mt-4">
+  {% if page_obj.has_other_pages %}
+    <div class="flex justify-center space-x-1">
+      {% if page_obj.has_previous %}
+        <a href="?{% if query %}q={{ query }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if office_filter %}office={{ office_filter }}&{% endif %}{% if disposed_filter %}disposed={{ disposed_filter }}&{% endif %}{% if assigned_filter %}assigned={{ assigned_filter }}&{% endif %}per_page={{ per_page }}&page=1" class="px-3 py-1 border">« Первая</a>
+        <a href="?{% if query %}q={{ query }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if office_filter %}office={{ office_filter }}&{% endif %}{% if disposed_filter %}disposed={{ disposed_filter }}&{% endif %}{% if assigned_filter %}assigned={{ assigned_filter }}&{% endif %}per_page={{ per_page }}&page={{ page_obj.previous_page_number }}" class="px-3 py-1 border">‹ Предыдущая</a>
+      {% endif %}
+      <span class="px-3 py-1">{{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a href="?{% if query %}q={{ query }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if office_filter %}office={{ office_filter }}&{% endif %}{% if disposed_filter %}disposed={{ disposed_filter }}&{% endif %}{% if assigned_filter %}assigned={{ assigned_filter }}&{% endif %}per_page={{ per_page }}&page={{ page_obj.next_page_number }}" class="px-3 py-1 border">Следующая ›</a>
+        <a href="?{% if query %}q={{ query }}&{% endif %}{% if type_filter %}type={{ type_filter }}&{% endif %}{% if office_filter %}office={{ office_filter }}&{% endif %}{% if disposed_filter %}disposed={{ disposed_filter }}&{% endif %}{% if assigned_filter %}assigned={{ assigned_filter }}&{% endif %}per_page={{ per_page }}&page={{ page_obj.paginator.num_pages }}" class="px-3 py-1 border">Последняя »</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function copyEquipment(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Данные оборудования скопированы!');
+  }).catch(err => console.error('Ошибка:', err));
+}
+</script>
+{% endblock %}

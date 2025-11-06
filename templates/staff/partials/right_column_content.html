@@ -1,0 +1,102 @@
+<!-- templates/staff/partials/right_column_content.html -->
+
+{% load static %}
+<div class="flex flex-col h-full">
+  <!-- Карточка сотрудника -->
+  <div class="flex-shrink-0 border-b p-6 overflow-y-auto">
+    {% include 'staff/employee_detail_card.html' with employee=selected_employee %}
+  </div>
+
+  <!-- Оборудование -->
+  <div class="flex-grow overflow-y-auto p-6">
+    <h3 class="text-lg font-semibold mb-2">Оборудование</h3>
+    {% if selected_employee.equipment_set.all %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="py-2 px-4 text-left">Тип ТМЦ</th>
+              <th class="py-2 px-4 text-left">Модель</th>
+              <th class="py-2 px-4 text-left">Серийный номер</th>
+              <th class="py-2 px-4 text-left">MAC адрес</th>
+              <th class="py-2 px-4 text-left">(SIP) IP/AnyDesk</th>
+              <th class="py-2 px-4 text-left">Комментарий</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for eq in selected_employee.equipment_set.all %}
+            <tr class="border-t">
+              <td class="py-2 px-4">{{ eq.get_type_display }}</td>
+              <td class="py-2 px-4">{{ eq.model|default:"—" }}</td>
+              <td class="py-2 px-4">{{ eq.serial_number|default:"—" }}</td>
+              <td class="py-2 px-4">{{ eq.mac_address|default:"—" }}</td>
+              <td class="py-2 px-4">
+                {% if eq.ip_or_anydesk %}
+                  {% if eq.ip_or_anydesk|slice:":4" == 'http' %}
+                    <!-- Это IP-адрес, показываем как ссылку -->
+                    <a href="{{ eq.ip_or_anydesk }}" target="_blank" class="text-blue-600 hover:underline">{{ eq.ip_or_anydesk }}</a>
+                  {% elif eq.ip_or_anydesk.isdigit %}
+                    <!-- Это числовой ID AnyDesk -->
+                    <a href="#" class="text-blue-600 hover:underline anydesk-link" data-anydesk-id="{{ eq.ip_or_anydesk }}">
+                      {{ eq.ip_or_anydesk }}
+                    </a>
+                  {% else %}
+                    <!-- Просто текст -->
+                    {{ eq.ip_or_anydesk }}
+                  {% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="py-2 px-4">{{ eq.comment|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-gray-600">Нет закрепленного оборудования.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- JavaScript для AnyDesk -->
+<script>
+/**
+ * Обработчик клика по AnyDesk ссылке.
+ */
+function handleAnyDeskLinkClick(event) {
+  event.preventDefault();
+  const anyDeskId = event.currentTarget.getAttribute('data-anydesk-id');
+
+  if (!anyDeskId) {
+    alert('Не удалось получить ID AnyDesk.');
+    return;
+  }
+
+  const anyDeskUrl = `anydesk:${anyDeskId}`;
+  window.open(anyDeskUrl, '_self');
+
+  // fallback через 1 секунду
+  settimeout(() => {
+    alert(`если anydesk не открылся автоматически:\n\n1. откройте anydesk вручную.\n2. введите id: ${anydeskid}\n3. нажмите "подключиться".`);
+  }, 1000);
+}
+
+// Назначаем обработчики после загрузки контента
+document.addEventListener('DOMContentLoaded', function () {
+  const anyDeskLinks = document.querySelectorAll('.anydesk-link');
+  anyDeskLinks.forEach(link => {
+    link.addEventListener('click', handleAnyDeskLinkClick);
+  });
+});
+
+// Для HTMX: переназначаем обработчики после каждого запроса
+document.body.addEventListener('htmx:afterOnLoad', function() {
+  const anyDeskLinks = document.querySelectorAll('.anydesk-link');
+  anyDeskLinks.forEach(link => {
+    link.removeEventListener('click', handleAnyDeskLinkClick); // Удаляем старые обработчики
+    link.addEventListener('click', handleAnyDeskLinkClick);   // Назначаем новые
+  });
+});
+</script>
