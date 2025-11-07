@@ -10,15 +10,18 @@
 <div class="flex gap-3 justify-end sticky top-0 z-50 bg-white p-2 border-b">
   <div id="save_message" class="text-sm mt-2"></div>
   <button type="button" id="save-btn" class="px-4 py-2 bg-blue-600 text-white rounded">Сохранить</button>
+  <button type="button" id="settings-btn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+      ⚙️ Настройки генератора
+  </button>
   <button type="button" id="close-btn" class="px-4 py-2 bg-gray-200 rounded text-gray-700">Закрыть</button>
 </div>
 
 
 <form method="post" id="employee-form">
   {% csrf_token %}
-  <div class="grid grid-cols-3 gap-4 mt-2">
+  <div class="grid grid-cols-4 gap-4 mt-2">
 
-    <!-- ЛЕВАЯ КОЛОНКА 1/3: Фото + Статус + ФИО -->
+    <!-- ЛЕВАЯ КОЛОНКА 1/4: Фото + Статус + ФИО -->
     <div class="col-span-1 flex flex-col gap-4">
       <fieldset class="border p-4 flex-1">
         <legend class="font-medium">Фото и статус</legend>
@@ -60,8 +63,8 @@
       </fieldset>
     </div>
 
-    <!-- ПРАВАЯ КОЛОНКА 2/3: Основная информация + Учетные данные -->
-    <div class="col-span-2 flex flex-col gap-4">
+    <!-- ПРАВАЯ КОЛОНКА 3/4: Основная информация + Учетные данные -->
+    <div class="col-span-3 flex flex-col gap-4">
 
       <!-- Основная информация -->
       <fieldset class="border p-4">
@@ -125,9 +128,17 @@
                 <label class="text-xs text-gray-500">Логин</label>
                 <input type="text" id="ad_login_field" name="{{ form.ad_login.html_name }}" value="{{ form.ad_login.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" oninput="updateADPrefix()">
               </div>
-              <div>
-                <label class="text-xs text-gray-500">Пароль</label>
-                <input type="text" name="{{ form.ad_password.html_name }}" value="{{ form.ad_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              <div class="password-field-wrapper">
+                <div class="password-field">
+                  <label class="text-xs text-gray-500">Пароль</label>
+                  <input type="text" name="{{ form.ad_password.html_name }}" value="{{ form.ad_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" id="id_ad_password" />
+                </div>
+                <div class="password-controls">
+                  <button type="button" class="password-generate" onclick="generateMasterPassword()" title="Сгенерировать и синхронизировать пароли">
+                    🎲
+                  </button>
+                  <div class="password-strength" id="id_ad_password-strength"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -140,9 +151,17 @@
                 <label class="text-xs text-gray-500">Email</label>
                 {{ form.email|add_class:"w-full px-2 py-1 border rounded" }}
               </div>
-              <div>
-                <label class="text-xs text-gray-500">Пароль</label>
-                <input type="text" name="{{ form.email_password.html_name }}" value="{{ form.email_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              <div class="password-field-wrapper">
+                <div class="password-field">
+                  <label class="text-xs text-gray-500">Пароль</label>
+                  <input type="text" name="{{ form.email_password.html_name }}" value="{{ form.email_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" id="id_email_password" />
+                </div>
+                <div class="password-controls">
+                  <button type="button" class="password-generate" onclick="generatePassword('id_email_password')">
+                    🎲
+                  </button>
+                  <div class="password-strength" id="id_email_password-strength"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -155,13 +174,29 @@
                 <label class="text-xs text-gray-500">Номер SIP</label>
                 {{ form.sip_number|add_class:"w-full px-2 py-1 border rounded" }}
               </div>
-              <div>
-                <label class="text-xs text-gray-500">Логин 3CX</label>
-                {{ form.web_3cx|add_class:"w-full px-2 py-1 border rounded" }}
+              <div class="password-field-wrapper">
+                <div class="password-field">
+                  <label class="text-xs text-gray-500">3CX WEB пароль</label>
+                  <input type="text" name="{{ form.web_3cx.html_name }}" value="{{ form.web_3cx.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" id="id_web_3cx" />
+                </div>
+                <div class="password-controls">
+                  <button type="button" class="password-generate" onclick="generatePassword('id_web_3cx')">
+                    🎲
+                  </button>
+                  <div class="password-strength" id="id_web_3cx-strength"></div>
+                </div>
               </div>
-              <div>
-                <label class="text-xs text-gray-500">Пароль 3CX</label>
-                <input type="text" name="{{ form.pass_3cx.html_name }}" value="{{ form.pass_3cx.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              <div class="password-field-wrapper">
+                <div class="password-field">
+                  <label class="text-xs text-gray-500">Пароль 3CX</label>
+                  <input type="text" name="{{ form.pass_3cx.html_name }}" value="{{ form.pass_3cx.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" id="id_pass_3cx" />
+                </div>
+                <div class="password-controls">
+                  <button type="button" class="password-generate" onclick="generatePassword('id_pass_3cx')">
+                    🎲
+                  </button>
+                  <div class="password-strength" id="id_pass_3cx-strength"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -174,9 +209,17 @@
                 <label class="text-xs text-gray-500">Логин</label>
                 {{ form.b24_login|add_class:"w-full px-2 py-1 border rounded" }}
               </div>
-              <div>
-                <label class="text-xs text-gray-500">Пароль</label>
-                <input type="text" name="{{ form.b24_password.html_name }}" value="{{ form.b24_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              <div class="password-field-wrapper">
+                <div class="password-field">
+                  <label class="text-xs text-gray-500">Пароль</label>
+                  <input type="text" name="{{ form.b24_password.html_name }}" value="{{ form.b24_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" id="id_b24_password" />
+                </div>
+                <div class="password-controls">
+                  <button type="button" class="password-generate" onclick="generatePassword('id_b24_password')">
+                    🎲
+                  </button>
+                  <div class="password-strength" id="id_b24_password-strength"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -189,9 +232,17 @@
                 <label class="text-xs text-gray-500">Логин</label>
                 {{ form.tel_b24_login|add_class:"w-full px-2 py-1 border rounded" }}
               </div>
-              <div>
-                <label class="text-xs text-gray-500">Пароль</label>
-                <input type="text" name="{{ form.tel_b24_password.html_name }}" value="{{ form.tel_b24_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              <div class="password-field-wrapper">
+                <div class="password-field">
+                  <label class="text-xs text-gray-500">Пароль</label>
+                  <input type="text" name="{{ form.tel_b24_password.html_name }}" value="{{ form.tel_b24_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" id="id_tel_b24_password" />
+                </div>
+                <div class="password-controls">
+                  <button type="button" class="password-generate" onclick="generatePassword('id_tel_b24_password')">
+                    🎲
+                  </button>
+                  <div class="password-strength" id="id_tel_b24_password-strength"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -204,9 +255,17 @@
                 <label class="text-xs text-gray-500">Логин</label>
                 {{ form.vats_login|add_class:"w-full px-2 py-1 border rounded" }}
               </div>
-              <div>
-                <label class="text-xs text-gray-500">Пароль</label>
-                <input type="text" name="{{ form.vats_password.html_name }}" value="{{ form.vats_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" />
+              <div class="password-field-wrapper">
+                <div class="password-field">
+                  <label class="text-xs text-gray-500">Пароль</label>
+                  <input type="text" name="{{ form.vats_password.html_name }}" value="{{ form.vats_password.value|default_if_none:'' }}" class="w-full px-2 py-1 border rounded" id="id_vats_password" />
+                </div>
+                <div class="password-controls">
+                  <button type="button" class="password-generate" onclick="generatePassword('id_vats_password')">
+                    🎲
+                  </button>
+                  <div class="password-strength" id="id_vats_password-strength"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -221,103 +280,448 @@
     <legend class="font-medium">Дополнительная информация</legend>
     {{ form.info|add_class:"w-full px-2 py-2 border rounded resize-y min-h-[40px]" }}
   </fieldset>
+
+  <!-- Модальное окно настроек генератора паролей -->
+  <div id="settings-modal" class="settings-modal">
+      <div class="settings-content">
+          <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold">Настройки генератора паролей</h3>
+              <button type="button" id="modal-close-btn" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+          </div>
+          
+          <div class="settings-option">
+              <label>Длина пароля: <span id="length-value">12</span> символов</label>
+              <input type="range" id="password-length" min="8" max="20" value="12" class="w-full" oninput="updateLengthValue(this.value)">
+          </div>
+          
+          <div class="settings-option">
+              <label>
+                  <input type="checkbox" id="use-uppercase" checked> Заглавные буквы (A-Z)
+              </label>
+          </div>
+          
+          <div class="settings-option">
+              <label>
+                  <input type="checkbox" id="use-lowercase" checked> Строчные буквы (a-z)
+              </label>
+          </div>
+          
+          <div class="settings-option">
+              <label>
+                  <input type="checkbox" id="use-numbers" checked> Цифры (0-9)
+              </label>
+          </div>
+          
+          <div class="settings-option">
+              <label>
+                  <input type="checkbox" id="use-symbols" checked> Спецсимволы (!@#$%^&*)
+              </label>
+          </div>
+          
+          <div class="settings-option">
+              <label>
+                  <input type="checkbox" id="sync-passwords" checked> Синхронизировать пароли AD → Email → Б24
+              </label>
+          </div>
+          
+          <div class="settings-option">
+              <label>Исключать похожие символы:</label>
+              <input type="text" id="exclude-chars" value="" placeholder="oO0l1iI" class="w-full p-2 border rounded">
+          </div>
+          
+          <div class="mt-6 flex gap-2">
+              <button type="button" id="modal-apply-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                  Применить
+              </button>
+              <button type="button" id="modal-close-btn2" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                  Закрыть
+              </button>
+              <button type="button" id="modal-reset-btn" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+                  Сбросить
+              </button>
+          </div>
+      </div>
+  </div>
+
 </form>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  const form = document.getElementById("employee-form");
-  const saveBtn = document.getElementById("save-btn");
-  const closeBtn = document.getElementById("close-btn");
+// Настройки генератора паролей по умолчанию
+let passwordSettings = {
+    length: 12,
+    useUppercase: true,
+    useLowercase: true,
+    useNumbers: true,
+    useSymbols: true,
+    excludeChars: '',
+    syncPasswords: true
+};
 
-  // Сохраняем исходные данные
-  let initialData = new FormData(form);
+// Списки слов для генерации читаемых паролей
+const readableWords = {
+    prefixes: ['Syv', 'Nez', 'Bok', 'Gor', 'Dre', 'Fal', 'Kir', 'Lom', 'Pyr', 'Rav'],
+    syllables: ['bis', 'reg', 'gob', 'vid', 'tor', 'nal', 'mer', 'siv', 'tan', 'vol'],
+    suffixes: ['ide', 'obo', 'ara', 'ito', 'une', 'ega', 'oro', 'ima', 'ulo', 'ane']
+};
 
-  function isFormChanged() {
-    const currentData = new FormData(form);
-    for (let [key, value] of currentData.entries()) {
-      if (value !== initialData.get(key)) return true;
-    }
-    return false;
-  }
+// Функции для модального окна
+function openSettings() {
+    console.log('Opening settings modal');
+    document.getElementById('settings-modal').style.display = 'block';
+    loadSettings();
+}
 
-  function updateSaveButton() {
-    if (isFormChanged()) {
-      saveBtn.classList.add("bg-green-600", "font-bold");
-      saveBtn.classList.remove("bg-blue-600");
-    } else {
-      saveBtn.classList.remove("bg-green-600", "font-bold");
-      saveBtn.classList.add("bg-blue-600");
-    }
-  }
+function closeSettings() {
+    console.log('Closing settings modal');
+    document.getElementById('settings-modal').style.display = 'none';
+}
 
-  // Следим за изменениями в форме
-  form.addEventListener("input", updateSaveButton);
+function updateLengthValue(value) {
+    document.getElementById('length-value').textContent = value;
+}
 
-  // Кнопка закрыть
-  closeBtn.addEventListener("click", function() {
-    if (isFormChanged()) {
-      if (!confirm("Есть несохранённые изменения. Закрыть форму?")) return;
-    }
-    window.location.href = "{% url 'employees_list' %}";
-  });
+function loadSettings() {
+    console.log('Loading settings:', passwordSettings);
+    document.getElementById('password-length').value = passwordSettings.length;
+    document.getElementById('use-uppercase').checked = passwordSettings.useUppercase;
+    document.getElementById('use-lowercase').checked = passwordSettings.useLowercase;
+    document.getElementById('use-numbers').checked = passwordSettings.useNumbers;
+    document.getElementById('use-symbols').checked = passwordSettings.useSymbols;
+    document.getElementById('sync-passwords').checked = passwordSettings.syncPasswords;
+    document.getElementById('exclude-chars').value = passwordSettings.excludeChars;
+    updateLengthValue(passwordSettings.length);
+}
 
-// AJAX сохранение
-saveBtn.addEventListener("click", function() {
-    const msg = document.getElementById("save_message");
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", window.location.href);
-    xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
-    xhr.setRequestHeader("X-CSRFToken", document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            msg.textContent = "✅ Сохранено";
-            msg.className = "text-green-900 text-sm mt-3";
-
-            // фиксируем новые данные как "исходные"
-            initialData = new FormData(form);
-            updateSaveButton();
-
-            setTimeout(() => { msg.textContent = ""; }, 3000);
-
-        } else {
-            msg.textContent = "❌ Ошибка сохранения";
-            msg.className = "text-red-600 text-sm mt-2";
-        }
+function applySettings() {
+    console.log('Applying settings');
+    passwordSettings = {
+        length: parseInt(document.getElementById('password-length').value),
+        useUppercase: document.getElementById('use-uppercase').checked,
+        useLowercase: document.getElementById('use-lowercase').checked,
+        useNumbers: document.getElementById('use-numbers').checked,
+        useSymbols: document.getElementById('use-symbols').checked,
+        syncPasswords: document.getElementById('sync-passwords').checked,
+        excludeChars: document.getElementById('exclude-chars').value
     };
+    console.log('New settings:', passwordSettings);
+    closeSettings();
+    localStorage.setItem('passwordGeneratorSettings', JSON.stringify(passwordSettings));
+}
 
-    xhr.send(new FormData(form));
-});
+function resetSettings() {
+    console.log('Resetting settings to default');
+    passwordSettings = {
+        length: 12,
+        useUppercase: true,
+        useLowercase: true,
+        useNumbers: true,
+        useSymbols: true,
+        syncPasswords: true,
+        excludeChars: ''
+    };
+    loadSettings();
+}
 
+// Генератор читаемых паролей с адаптивной длиной
+function generateReadablePassword() {
+    const prefix = readableWords.prefixes[Math.floor(Math.random() * readableWords.prefixes.length)];
+    const syllable = readableWords.syllables[Math.floor(Math.random() * readableWords.syllables.length)];
+    const suffix = readableWords.suffixes[Math.floor(Math.random() * readableWords.suffixes.length)];
+    
+    // Собираем основу пароля
+    let passwordBase = prefix + syllable + suffix;
+    
+    // Определяем сколько символов нужно добавить для достижения нужной длины
+    const baseLength = passwordBase.length;
+    const remainingLength = passwordSettings.length - baseLength;
+    
+    let additionalChars = '';
+    
+    if (remainingLength > 0) {
+        // Добавляем цифры (минимум 2 символа)
+        const numbersLength = Math.max(2, Math.min(remainingLength - 1, 4));
+        const numbers = Math.floor(Math.pow(10, numbersLength - 1) + Math.random() * (Math.pow(10, numbersLength) - Math.pow(10, numbersLength - 1))).toString();
+        
+        additionalChars = numbers;
+        
+        // Добавляем специальный символ если нужно и есть место
+        if (passwordSettings.useSymbols && additionalChars.length < remainingLength) {
+            const symbols = '@$!%*?&';
+            const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+            additionalChars += symbol;
+        }
+        
+        // Если все еще есть место, добавляем дополнительные символы
+        if (additionalChars.length < remainingLength) {
+            const extraLength = remainingLength - additionalChars.length;
+            const extraChars = 'abcdefghijkmnpqrstuvwxyz';
+            for (let i = 0; i < extraLength; i++) {
+                additionalChars += extraChars[Math.floor(Math.random() * extraChars.length)];
+            }
+        }
+    }
+    
+    // Собираем финальный пароль
+    let password = passwordBase + additionalChars;
+    
+    // Обрезаем до нужной длины (на всякий случай)
+    password = password.substring(0, passwordSettings.length);
+    
+    console.log('Generated readable password:', password, 'Length:', password.length);
+    return password;
+}
 
-  // ФИО и AD Login синхронизация
-  const fioField = document.getElementById("fio_field");
-  const lastField = document.getElementById("id_last_name");
-  const firstField = document.getElementById("id_first_name");
-  const middleField = document.getElementById("id_middle_name");
-  const adLoginField = document.getElementById("ad_login_field");
+// Генератор паролей для отдельных полей
+function generatePassword(fieldId) {
+    console.log('Generating password for:', fieldId, 'with length:', passwordSettings.length);
+    let password;
+    
+    if (passwordSettings.useUppercase && passwordSettings.useLowercase && 
+        passwordSettings.useNumbers && passwordSettings.useSymbols) {
+        // Используем читаемый генератор если все опции включены
+        password = generateReadablePassword();
+    } else {
+        // Иначе используем стандартный генератор
+        password = generateStandardPassword();
+    }
+    
+    document.getElementById(fieldId).value = password;
+    updatePasswordStrength(fieldId, password);
+    console.log('Generated password:', password, 'Actual length:', password.length);
+}
 
-  fioField.addEventListener("input", () => {
-    const parts = fioField.value.trim().split(" ");
-    lastField.value = parts[0] || "";
-    firstField.value = parts[1] || "";
-    middleField.value = parts[2] || "";
-  });
+// Стандартный генератор паролей
+function generateStandardPassword() {
+    const charset = {
+        uppercase: 'ABCDEFGHJKLMNPQRSTUVWXYZ',
+        lowercase: 'abcdefghijkmnpqrstuvwxyz',
+        numbers: '23456789',
+        symbols: '@$!%*?&'
+    };
+    
+    let availableChars = '';
+    
+    if (passwordSettings.useUppercase) availableChars += charset.uppercase;
+    if (passwordSettings.useLowercase) availableChars += charset.lowercase;
+    if (passwordSettings.useNumbers) availableChars += charset.numbers;
+    if (passwordSettings.useSymbols) availableChars += charset.symbols;
+    
+    // Исключаем символы
+    if (passwordSettings.excludeChars) {
+        availableChars = availableChars.split('').filter(char => 
+            !passwordSettings.excludeChars.includes(char)
+        ).join('');
+    }
+    
+    if (availableChars.length === 0) {
+        alert('Выберите хотя бы один тип символов!');
+        return '';
+    }
+    
+    let password = '';
+    for (let i = 0; i < passwordSettings.length; i++) {
+        const randomIndex = Math.floor(Math.random() * availableChars.length);
+        password += availableChars[randomIndex];
+    }
+    
+    console.log('Generated standard password:', password, 'Length:', password.length);
+    return password;
+}
 
-  [lastField, firstField, middleField].forEach(field => {
-    field.addEventListener("input", () => {
-      let parts = [lastField.value, firstField.value, middleField.value].filter(p => p);
-      fioField.value = parts.join(" ");
+// Генерация мастер-пароля с синхронизацией
+function generateMasterPassword() {
+    console.log('Generating master password with sync:', passwordSettings.syncPasswords, 'Length:', passwordSettings.length);
+    const masterPassword = generateReadablePassword();
+    
+    // Устанавливаем пароль для AD
+    document.getElementById('id_ad_password').value = masterPassword;
+    updatePasswordStrength('id_ad_password', masterPassword);
+    
+    // Синхронизируем с другими системами если включена опция
+    if (passwordSettings.syncPasswords) {
+        document.getElementById('id_email_password').value = masterPassword;
+        document.getElementById('id_b24_password').value = masterPassword;
+        
+        updatePasswordStrength('id_email_password', masterPassword);
+        updatePasswordStrength('id_b24_password', masterPassword);
+        
+        console.log('Passwords synchronized to Email and Б24');
+    }
+    
+    console.log('Master password generated:', masterPassword, 'Length:', masterPassword.length);
+}
+
+// Оценка сложности пароля
+function updatePasswordStrength(fieldId, password) {
+    const strengthElement = document.getElementById(fieldId + '-strength');
+    if (!strengthElement) return;
+    
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (password.length >= 12) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    
+    let strengthText = '';
+    let strengthClass = '';
+    
+    if (strength <= 2) {
+        strengthText = 'Слабый';
+        strengthClass = 'strength-weak';
+    } else if (strength <= 4) {
+        strengthText = 'Средний';
+        strengthClass = 'strength-medium';
+    } else {
+        strengthText = 'Сильный';
+        strengthClass = 'strength-strong';
+    }
+    
+    strengthElement.textContent = strengthText;
+    strengthElement.className = 'password-strength ' + strengthClass;
+}
+
+// Загрузка настроек при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing password generator');
+    
+    // Загружаем настройки из localStorage
+    try {
+        const savedSettings = localStorage.getItem('passwordGeneratorSettings');
+        if (savedSettings) {
+            passwordSettings = JSON.parse(savedSettings);
+            console.log('Loaded settings from localStorage:', passwordSettings);
+        } else {
+            console.log('No saved settings, using defaults');
+        }
+    } catch (e) {
+        console.error('Error loading settings from localStorage:', e);
+    }
+    
+    // Инициализация обработчиков событий для формы
+    const form = document.getElementById("employee-form");
+    const saveBtn = document.getElementById("save-btn");
+    const closeBtn = document.getElementById("close-btn");
+    const settingsBtn = document.getElementById("settings-btn");
+
+    // Сохраняем исходные данные
+    let initialData = new FormData(form);
+
+    function isFormChanged() {
+        const currentData = new FormData(form);
+        for (let [key, value] of currentData.entries()) {
+            if (value !== initialData.get(key)) return true;
+        }
+        return false;
+    }
+
+    function updateSaveButton() {
+        if (isFormChanged()) {
+            saveBtn.classList.add("bg-green-600", "font-bold");
+            saveBtn.classList.remove("bg-blue-600");
+        } else {
+            saveBtn.classList.remove("bg-green-600", "font-bold");
+            saveBtn.classList.add("bg-blue-600");
+        }
+    }
+
+    // Следим за изменениями в форме
+    form.addEventListener("input", updateSaveButton);
+
+    // Кнопка закрыть форму
+    closeBtn.addEventListener("click", function() {
+        if (isFormChanged()) {
+            if (!confirm("Есть несохранённые изменения. Закрыть форму?")) return;
+        }
+        window.location.href = "{% url 'employees_list' %}";
     });
-  });
 
-  window.updateADPrefix = function() {
-    adLoginField.value = adLoginField.value.replace(/^CORP\\/, "");
-    const displayVal = "CORP\\" + adLoginField.value;
-    adLoginField.dataset.display = displayVal;
-  }
+    // Кнопка настроек генератора
+    settingsBtn.addEventListener("click", openSettings);
+
+    // AJAX сохранение
+    saveBtn.addEventListener("click", function() {
+        const msg = document.getElementById("save_message");
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", window.location.href);
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+        xhr.setRequestHeader("X-CSRFToken", document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                msg.textContent = "✅ Сохранено";
+                msg.className = "text-green-900 text-sm mt-3";
+
+                // фиксируем новые данные как "исходные"
+                initialData = new FormData(form);
+                updateSaveButton();
+
+                setTimeout(() => { msg.textContent = ""; }, 3000);
+
+            } else {
+                msg.textContent = "❌ Ошибка сохранения";
+                msg.className = "text-red-600 text-sm mt-2";
+            }
+        };
+
+        xhr.send(new FormData(form));
+    });
+
+    // Обработчики для модального окна
+    document.getElementById('modal-close-btn').addEventListener('click', closeSettings);
+    document.getElementById('modal-close-btn2').addEventListener('click', closeSettings);
+    document.getElementById('modal-apply-btn').addEventListener('click', applySettings);
+    document.getElementById('modal-reset-btn').addEventListener('click', resetSettings);
+    
+    // Оцениваем существующие пароли
+    const passwordFields = [
+        'id_ad_password', 'id_email_password', 'id_web_3cx', 
+        'id_pass_3cx', 'id_b24_password', 'id_tel_b24_password', 'id_vats_password'
+    ];
+    passwordFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field && field.value) {
+            updatePasswordStrength(fieldId, field.value);
+        }
+    });
+
+    // ФИО и AD Login синхронизация
+    const fioField = document.getElementById("fio_field");
+    const lastField = document.getElementById("id_last_name");
+    const firstField = document.getElementById("id_first_name");
+    const middleField = document.getElementById("id_middle_name");
+    const adLoginField = document.getElementById("ad_login_field");
+
+    fioField.addEventListener("input", () => {
+        const parts = fioField.value.trim().split(" ");
+        lastField.value = parts[0] || "";
+        firstField.value = parts[1] || "";
+        middleField.value = parts[2] || "";
+    });
+
+    [lastField, firstField, middleField].forEach(field => {
+        field.addEventListener("input", () => {
+            let parts = [lastField.value, firstField.value, middleField.value].filter(p => p);
+            fioField.value = parts.join(" ");
+        });
+    });
+
+    window.updateADPrefix = function() {
+        adLoginField.value = adLoginField.value.replace(/^CORP\\/, "");
+        const displayVal = "CORP\\" + adLoginField.value;
+        adLoginField.dataset.display = displayVal;
+    }
 });
+
+// Закрытие модального окна при клике вне его
+window.onclick = function(event) {
+    const modal = document.getElementById('settings-modal');
+    if (event.target === modal) {
+        closeSettings();
+    }
+}
 </script>
 
 <style>
@@ -326,15 +730,82 @@ saveBtn.addEventListener("click", function() {
   }
 
   #save-btn.bg-green-600 {
-  background-color: #16a34a; /* зеленый */
-  font-weight: bold;
-}
+    background-color: #16a34a;
+    font-weight: bold;
+  }
 
+  /* Стили для генератора паролей */
+  .password-field-wrapper {
+      position: relative;
+      margin-bottom: 8px;
+  }
+
+  .password-field {
+      margin-bottom: 4px;
+  }
+
+  .password-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 2px;
+  }
+
+  .password-generate {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #6b7280;
+      padding: 2px 6px;
+      font-size: 12px;
+      border-radius: 4px;
+  }
+
+  .password-generate:hover {
+      color: #3b82f6;
+      background-color: #f3f4f6;
+  }
+
+  .password-strength {
+      font-size: 11px;
+      height: 14px;
+      line-height: 14px;
+  }
+
+  .strength-weak { color: #ef4444; }
+  .strength-medium { color: #f59e0b; }
+  .strength-strong { color: #10b981; }
+
+  .settings-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+  }
+
+  .settings-content {
+      background-color: white;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .settings-option {
+      margin-bottom: 15px;
+  }
+
+  .settings-option label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+  }
 </style>
-
-
-
-
-
 
 {% endblock %}
