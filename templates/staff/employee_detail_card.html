@@ -244,7 +244,13 @@
     <!-- Кнопки внизу модального окна -->
     <div class="flex items-center justify-between p-4 border-t">
       <div>
-        <button id="copy-equipment-btn" onclick="copyEquipmentData()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2">Копировать</button>
+        <button 
+            id="copy-equipment-btn" 
+            onclick="copyEquipmentFromTable()" 
+            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2"
+        >
+            Копировать оборудование в Битрикс
+        </button>
         <a id="go-to-equipment-btn" href="{% url 'equipment_list' %}?employee={{ selected_employee.id }}" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Перейти в Оборудование</a>      </div>
       <button onclick="closeEquipmentModal()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Закрыть</button>
     </div>
@@ -293,6 +299,105 @@ async function copyToClipboardHTML(employee) {
   }
 }
 
+/**
+ * Копирует оборудование из видимой таблицы (надежный способ)
+ */
+async function copyEquipmentFromTable() {
+  try {
+    const modalContent = document.getElementById('modal-content');
+    if (!modalContent) {
+      alert('Модальное окно оборудования не найдено');
+      return;
+    }
+
+    const table = modalContent.querySelector('table');
+    if (!table) {
+      alert('Таблица оборудования не найдена');
+      return;
+    }
+
+    const rows = table.querySelectorAll('tr');
+    if (rows.length <= 1) {
+      alert('Нет данных оборудования для копирования');
+      return;
+    }
+
+    // Получаем имя сотрудника из заголовка
+    const employeeName = document.getElementById('modal-employee-name').textContent;
+
+    // Создаем упрощенную таблицу только с нужными полями
+    let htmlTable = `
+<table border="1" cellpadding="4" cellspacing="0" style="border-collapse: collapse; font-family: Arial, sans-serif;">
+<caption style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">Оборудование: ${employeeName}</caption>
+<tr style="background-color: #f8f9fa;">
+    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Тип ТМЦ</th>
+    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Модель</th>
+    <th style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">Серийный номер</th>
+</tr>`;
+
+    // Пропускаем заголовок (первая строка) и обрабатываем данные
+    let equipmentCount = 0;
+    for (let i = 1; i < rows.length; i++) {
+      const cells = rows[i].querySelectorAll('td');
+      
+      // Минимум 3 ячейки: Тип, Модель, Серийный номер
+      if (cells.length >= 3) {
+        const type = cells[0].textContent.trim();
+        const model = cells[1].textContent.trim();
+        const serial = cells[2].textContent.trim();
+        
+        // Пропускаем пустые строки
+        if (type || model || serial) {
+          htmlTable += `
+<tr>
+    <td style="border: 1px solid #dee2e6; padding: 6px;">${type || "—"}</td>
+    <td style="border: 1px solid #dee2e6; padding: 6px;">${model || "—"}</td>
+    <td style="border: 1px solid #dee2e6; padding: 6px;">${serial || "—"}</td>
+</tr>`;
+          equipmentCount++;
+        }
+      }
+    }
+
+    htmlTable += '</table>';
+
+    if (equipmentCount === 0) {
+      alert('Не найдено данных оборудования для копирования');
+      return;
+    }
+
+    // Создаем текстовую версию для совместимости
+    let textTable = `Оборудование: ${employeeName}\n\n`;
+    textTable += 'Тип ТМЦ\tМодель\tСерийный номер\n';
+    
+    for (let i = 1; i < rows.length; i++) {
+      const cells = rows[i].querySelectorAll('td');
+      if (cells.length >= 3) {
+        const type = cells[0].textContent.trim();
+        const model = cells[1].textContent.trim();
+        const serial = cells[2].textContent.trim();
+        
+        if (type || model || serial) {
+          textTable += `${type || "—"}\t${model || "—"}\t${serial || "—"}\n`;
+        }
+      }
+    }
+
+    // Копируем в буфер обмена
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': new Blob([htmlTable], { type: 'text/html' }),
+        'text/plain': new Blob([textTable], { type: 'text/plain' })
+      })
+    ]);
+    
+    alert(`Оборудование скопировано! ✅\n\nСкопировано единиц: ${equipmentCount}\nПоля: Тип ТМЦ, Модель, Серийный номер`);
+    
+  } catch (e) {
+    console.error('Ошибка копирования оборудования:', e);
+    alert('Не удалось скопировать оборудование. Ошибка: ' + e.message);
+  }
+}
 
 
 /**

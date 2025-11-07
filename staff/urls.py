@@ -33,5 +33,6 @@ urlpatterns = [
     path('provisioning/update_equipment_inline/', views_provisioning.update_equipment_inline, name='update_equipment_inline'),
     path('provisioning/create_ad_account/<int:employee_id>/', views_provisioning.provisioning_create_ad_account, name='provisioning_create_ad_account'),
     path('provisioning/send_welcome_email/<int:employee_id>/', views_provisioning.provisioning_send_welcome_email, name='provisioning_send_welcome_email'),
+    path('employee/<int:employee_id>/equipment/json/', views_ajax.employee_equipment_json, name='employee_equipment_json'),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
