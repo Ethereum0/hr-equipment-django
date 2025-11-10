@@ -36,7 +36,17 @@
             </div>
           <div>
             <p class="text-xs text-gray-500">Номер SIP</p>
-            <p class="text-sm text-center break-words">{{ employee.sip_number|default:"—" }}</p>
+            {% if employee.sip_number %}
+              <p class="text-sm text-center break-words">
+                <a href="tel:{{ employee.sip_number }}" 
+                   class="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                   onclick="open3CX('{{ employee.sip_number }}', event)">
+                  {{ employee.sip_number }}
+                </a>
+              </p>
+            {% else %}
+              <p class="text-sm text-center break-words">—</p>
+            {% endif %}
           </div>
         <!-- ФИО под фото на мобильных, рядом на больших -->
         <h2 class="text-xl font-bold text-center md:hidden">{{ employee.fio }}</h2>
@@ -58,7 +68,17 @@
           </div>
           <div>
             <p class="text-sm text-gray-600">Телефон</p>
-            <p>{{ employee.phone|default:"—" }}</p>
+            {% if employee.phone %}
+              <p>
+                <a href="tel:{{ employee.phone }}" 
+                   class="text-blue-600 hover:text-blue-800 hover:underline"
+                   onclick="open3CX('{{ employee.phone }}', event)">
+                  {{ employee.phone }}
+                </a>
+              </p>
+            {% else %}
+              <p>—</p>
+            {% endif %}
           </div>
           <div>
             <p class="text-sm text-gray-600">Офис</p>
@@ -67,6 +87,14 @@
           <div>
             <p class="text-sm text-gray-600">Руководитель</p>
             <p>{{ employee.supervisor.fio|default:"—" }}</p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-600">Отдел</p>
+            <p>{{ employee.department|default:"—" }}</p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-600">Дата увольнения</p>
+            <p>{{ employee.dismissal_date|default:"—" }}</p>
           </div>
         </div>
       </div>
@@ -113,7 +141,17 @@
         <div class="space-y-2">
           <div>
             <p class="text-xs text-gray-500">Номер SIP</p>
-            <p class="text-sm break-words">{{ employee.sip_number|default:"—" }}</p>
+            {% if employee.sip_number %}
+              <p class="text-sm break-words">
+                <a href="tel:{{ employee.sip_number }}" 
+                   class="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                   onclick="open3CX('{{ employee.sip_number }}', event)">
+                  {{ employee.sip_number }}
+                </a>
+              </p>
+            {% else %}
+              <p class="text-sm break-words">—</p>
+            {% endif %}
           </div>
           <div>
             <p class="text-xs text-gray-500">3CX WEB пароль</p>
@@ -172,6 +210,8 @@
       </div>
     </div>
   </fieldset>
+
+
   
   <!-- Кнопки действий -->
   <div class="mt-6 flex flex-wrap gap-2">
@@ -224,6 +264,17 @@
       </button>
     {% endif %}
   </div>
+
+
+    <!-- Дополнительная информация -->
+  {% if employee.info %}
+  <fieldset class="border p-4 mb-6">
+    <legend class="text-lg font-semibold px-2">Дополнительная информация</legend>
+    <div class="bg-gray-50 p-3 rounded">
+      <p class="text-sm whitespace-pre-wrap">{{ employee.info }}</p>
+    </div>
+  </fieldset>
+  {% endif %}
 </div>
 
 <!-- Модальное окно для оборудования -->
@@ -259,12 +310,76 @@
 
 <script>
 /**
+ * Открывает 3CX с набранным номером
+ * @param {string} phoneNumber - Номер телефона для набора
+ * @param {Event} event - Событие клика
+ */
+function open3CX(phoneNumber, event) {
+  // Предотвращаем стандартное действие ссылки
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  
+  // Очищаем номер от лишних символов (оставляем только цифры)
+  const cleanNumber = phoneNumber.replace(/\D/g, '');
+  
+  if (!cleanNumber) {
+    alert('Номер телефона не указан или указан некорректно');
+    return;
+  }
+  
+  // Пробуем разные схемы URI для 3CX
+  const schemes = [
+    `tel:${cleanNumber}`,                    // Стандартная tel: схема
+    `callto:${cleanNumber}`,                 // Схема callto:
+    `sip:${cleanNumber}`,                    // SIP схема
+    `3cx:call?number=${cleanNumber}`,        // Прямая схема 3CX
+    `threecx:call?number=${cleanNumber}`,    // Альтернативная схема 3CX
+  ];
+  
+  let success = false;
+  
+  // Пробуем открыть по каждой схеме
+  schemes.forEach(scheme => {
+    if (!success) {
+      try {
+        const link = document.createElement('a');
+        link.href = scheme;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        success = true;
+        console.log(`Успешно открыто через схему: ${scheme}`);
+      } catch (e) {
+        console.log(`Схема не сработала: ${scheme}`, e);
+      }
+    }
+  });
+  
+  // Если ни одна схема не сработала, показываем инструкцию
+  if (!success) {
+    const userAction = confirm(
+      `Не удалось автоматически открыть 3CX.\n\n` +
+      `Номер: ${cleanNumber}\n\n` +
+      `Скопировать номер в буфер обмена?`
+    );
+    
+    if (userAction) {
+      navigator.clipboard.writeText(cleanNumber).then(() => {
+        alert(`Номер ${cleanNumber} скопирован в буфер обмена.\n\nТеперь вы можете вставить его в 3CX вручную.`);
+      }).catch(() => {
+        alert(`Номер для набора: ${cleanNumber}\n\nСкопируйте его и вставьте в 3CX.`);
+      });
+    }
+  }
+}
+
+/**
  * Копирует текст в буфер обмена.
  * @param {string} text - Текст для копирования.
  */
-
-
-
 async function copyToClipboardHTML(employee) {
   const htmlTable = `
 <table border="1" cellpadding="2" cellspacing="0">
@@ -399,7 +514,6 @@ async function copyEquipmentFromTable() {
   }
 }
 
-
 /**
  * Открывает AnyDesk с указанным ID.
  * @param {string} anydeskId - ID для подключения через AnyDesk.
@@ -507,9 +621,7 @@ function copyEquipmentData() {
     }
   }
 }
-</script>
 
-<script>
 function changeEmployeeStatus(employeeId, newStatus) {
     const selectElement = document.getElementById('status-select');
     const originalClass = selectElement.className;
@@ -555,9 +667,6 @@ function changeEmployeeStatus(employeeId, newStatus) {
     });
 }
 
-</script>
-
-<script>
 function goToProvisioning(employeeId, fio) {
   // Переход на страницу Provisioning с фильтром по сотруднику
   const url = `/provisioning/?employee_id=${employeeId}`;
