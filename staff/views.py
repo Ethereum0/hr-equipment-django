@@ -15,9 +15,20 @@ from django.conf import settings
 from django.utils import timezone
 from openpyxl import load_workbook
 import requests
-
+from .ad_service import ADService
 from .models import Employee, Equipment
 from .forms import EmployeeForm, EquipmentForm
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+from django.core.cache import cache
+
+from django.http import StreamingHttpResponse
+import json
+
+import uuid
+
 
 # Оставляем только основные функции управления сотрудниками и оборудованием
 # УДАЛИТЬ все функции: generate_config, provisioning_dashboard, provisioning_create_ad_account,
@@ -299,20 +310,176 @@ def equipment_assign_employee(request, pk):
     
     return HttpResponseRedirect('/equipment/')
 
+def get_ad_status(request, employee_id):
+    """AJAX: Получить статус AD"""
+    employee = get_object_or_404(Employee, pk=employee_id)
+    if not employee.ad_login:
+        return JsonResponse({'error': 'No AD login'})
+    
+    ad = ADService()
+    status = ad.get_user_status(employee.ad_login)
+    return JsonResponse(status)
 
+def unlock_ad_account(request, employee_id):
+    """AJAX: Разблокировать учетку AD"""
+    employee = get_object_or_404(Employee, pk=employee_id)
+    if not employee.ad_login:
+        return JsonResponse({'error': 'No AD login'})
+    
+    ad = ADService()
+    result = ad.unlock_user(employee.ad_login)
+    return JsonResponse(result)
 
+# staff/views.py - добавить эту функцию
 
+def ad_events_stream(request, employee_id):
+    """Server-Sent Events поток для обновлений AD статуса"""
+    employee = get_object_or_404(Employee, pk=employee_id)
+    
+    def event_stream():
+        # Отправляем начальный статус
+        yield f"data: {json.dumps({'type': 'connected', 'username': employee.ad_login})}\n\n"
+        
+        # Здесь можно добавить логику долгоживущего соединения
+        # Но для простоты просто закрываем соединение
+        yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+    
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
+    response['Cache-Control'] = 'no-cache'
+    response['Connection'] = 'keep-alive'
+    return response
 
+@csrf_exempt
+def ad_lockout_webhook(request):
+    """Webhook для получения событий блокировки из AD"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        event_type = data.get('event_type')
+        
+        print(f"🔔 Webhook received: {username} - {event_type}")
+        
+        if not username:
+            return JsonResponse({'error': 'Username required'}, status=400)
+        
+        # Сбрасываем кэш для этого пользователя
+        cache_key = f'ad_status_{username}'
+        cache.delete(cache_key)
+        
+        # Сохраняем уведомление
+        notification_id = str(uuid.uuid4())
+        notification_key = f'ad_notification_{notification_id}'
+        
+        # Ищем сотрудника по AD логину
+        try:
+            employee = Employee.objects.get(ad_login=username)
+            employee_name = employee.fio
+            employee_id = employee.id
+        except Employee.DoesNotExist:
+            employee_name = username
+            employee_id = None
+        
+        notification_data = {
+            'id': notification_id,
+            'username': username,
+            'employee_name': employee_name,
+            'employee_id': employee_id,
+            'event_type': event_type,
+            'timestamp': timezone.now().isoformat(),
+            'source_computer': data.get('source_computer', 'Unknown')
+        }
+        
+        # Сохраняем уведомление на 1 час
+        cache.set(notification_key, notification_data, 3600)
+        
+        # Добавляем ID в список активных уведомлений
+        notifications_list = cache.get('ad_notifications_list', [])
+        notifications_list.append(notification_id)
+        cache.set('ad_notifications_list', notifications_list, 3600)
+        
+        print(f"✅ Notification created for: {username}")
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'Notification created for {username}',
+            'username': username,
+            'employee_id': employee_id
+        })
+        
+    except Exception as e:
+        print(f"❌ Webhook error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+    
 
+def check_ad_event(request, employee_id):
+    """Проверяет есть ли события для сотрудника"""
+    employee = get_object_or_404(Employee, pk=employee_id)
+    
+    if not employee.ad_login:
+        return JsonResponse({'has_event': False})
+    
+    event_key = f'ad_event_{employee.ad_login}'
+    event_data = cache.get(event_key)
+    
+    if event_data:
+        # Удаляем событие после отправки
+        cache.delete(event_key)
+        return JsonResponse({
+            'has_event': True,
+            'event_data': event_data
+        })
+    
+    return JsonResponse({'has_event': False})
 
+def check_notifications(request):
+    """Проверяет новые уведомления о блокировках"""
+    notifications_list = cache.get('ad_notifications_list', [])
+    new_notifications = []
+    
+    for notification_id in notifications_list:
+        notification_key = f'ad_notification_{notification_id}'
+        notification_data = cache.get(notification_key)
+        
+        if notification_data:
+            new_notifications.append(notification_data)
+            # НЕ удаляем уведомление - оставляем пока не истечет TTL (1 час)
+    
+    return JsonResponse({
+        'notifications': new_notifications,
+        'count': len(new_notifications)
+    })
 
-
-
-
-
-
-
-
-
+@csrf_exempt
+def remove_notification(request):
+    """Удаляет уведомление при закрытии"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            notification_id = data.get('notification_id')
+            
+            if notification_id:
+                # Удаляем уведомление из кэша
+                notification_key = f'ad_notification_{notification_id}'
+                cache.delete(notification_key)
+                
+                # Удаляем ID из списка активных уведомлений
+                notifications_list = cache.get('ad_notifications_list', [])
+                if notification_id in notifications_list:
+                    notifications_list.remove(notification_id)
+                    cache.set('ad_notifications_list', notifications_list, 3600)
+                
+                print(f"✅ Notification removed: {notification_id}")
+                return JsonResponse({'success': True})
+            
+        except Exception as e:
+            print(f"❌ Remove notification error: {e}")
+    
+    return JsonResponse({'success': False})
 
 

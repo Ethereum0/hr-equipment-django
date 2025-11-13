@@ -38,5 +38,128 @@
   </div>
 
   {% block extra_js %}{% endblock %}
+
+<div id="notifications-container" class="fixed top-4 right-4 z-50 space-y-2 max-w-sm"></div>
+
+<script>
+// Загружаем закрытые уведомления из localStorage
+const getClosedNotifications = () => {
+    try {
+        return new Set(JSON.parse(localStorage.getItem('closedNotifications') || '[]'));
+    } catch {
+        return new Set();
+    }
+};
+
+// Сохраняем закрытые уведомления в localStorage
+const saveClosedNotification = (notificationId) => {
+    const closed = getClosedNotifications();
+    closed.add(notificationId);
+    localStorage.setItem('closedNotifications', JSON.stringify([...closed]));
+};
+
+const closedNotifications = getClosedNotifications();
+
+// Функция для показа уведомлений
+function showNotification(notification) {
+    // Проверяем, не закрывали ли уже это уведомление
+    if (closedNotifications.has(notification.id)) {
+        return; // Уже закрывали - пропускаем
+    }
+    
+    const container = document.getElementById('notifications-container');
+    
+    // Проверяем, не показывается ли уже это уведомление
+    if (document.getElementById(`notification-${notification.id}`)) {
+        return; // Уже показывается - пропускаем
+    }
+    
+    const notificationEl = document.createElement('div');
+    notificationEl.id = `notification-${notification.id}`;
+    notificationEl.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative shadow-lg';
+    notificationEl.innerHTML = `
+        <strong>🔒 Заблокирована учетная запись</strong>
+        <p class="text-sm mt-1">Пользователь: ${notification.employee_name}</p>
+        <p class="text-xs text-gray-600">Логин: ${notification.username}</p>
+        <p class="text-xs text-gray-600">Время: ${new Date(notification.timestamp).toLocaleTimeString()}</p>
+        ${notification.employee_id ? 
+            `<button onclick="openEmployeeCard(${notification.employee_id}, '${notification.id}')" 
+                    class="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                Открыть карточку
+            </button>` 
+            : ''
+        }
+        <button onclick="closeNotification('${notification.id}')" 
+                class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+            ×
+        </button>
+    `;
+    
+    container.appendChild(notificationEl);
+}
+
+// Функция для закрытия уведомления
+function closeNotification(notificationId) {
+    const notificationEl = document.getElementById(`notification-${notificationId}`);
+    if (notificationEl) {
+        notificationEl.remove();
+    }
+    
+    // Сохраняем в localStorage что уведомление закрыто
+    saveClosedNotification(notificationId);
+    
+    // Удаляем уведомление из кэша на сервере
+    fetch('/staff/remove-notification/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({ notification_id: notificationId })
+    }).catch(error => console.error('Remove notification failed:', error));
+}
+
+// Обновляем функцию перехода к карточке
+function openEmployeeCard(employeeId, notificationId) {
+    // Сначала закрываем уведомление
+    const notificationEl = document.getElementById(`notification-${notificationId}`);
+    if (notificationEl) {
+        notificationEl.remove();
+    }
+    
+    // Сохраняем в localStorage что уведомление закрыто
+    saveClosedNotification(notificationId);
+    
+    // НЕМЕДЛЕННО переходим на страницу (не ждем ответ от сервера)
+    window.location.href = `/employees/?selected_id=${employeeId}`;
+    
+    // В фоне удаляем уведомление из кэша (не блокируем переход)
+    fetch('/remove-notification/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({ notification_id: notificationId })
+    }).catch(error => console.error('Remove notification failed:', error));
+}
+// Проверяем новые уведомления каждые 5 секунд
+function checkForNotifications() {
+    fetch('/staff/check-notifications/')
+        .then(r => r.json())
+        .then(data => {
+            if (data.notifications && data.notifications.length > 0) {
+                data.notifications.forEach(notification => {
+                    showNotification(notification);
+                });
+            }
+        })
+        .catch(error => console.error('Notification check failed:', error));
+}
+
+// Запускаем проверку уведомлений
+setInterval(checkForNotifications, 5000);
+checkForNotifications();
+</script>
 </body>
 </html>

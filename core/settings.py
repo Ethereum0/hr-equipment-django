@@ -63,3 +63,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# settings.py
+AD_CONFIG = {
+    'SERVER': '172.16.15.5',
+    'PORT': 636,
+    'BASE_DN': 'DC=corp,DC=p-el,DC=ru',
+    'ADMIN_USER': 'e.potehin_adm',
+    'ADMIN_PASSWORD': '3geuME40i$prxW',
+    'USE_SSL': True,
+}

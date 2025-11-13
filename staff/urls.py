@@ -1,4 +1,3 @@
-# staff/urls.py
 from django.urls import path
 from . import views
 from . import views_ajax
@@ -24,6 +23,11 @@ urlpatterns = [
     # === AJAX маршруты ===
     path('employee/<int:employee_id>/equipment/', views_ajax.employee_equipment_partial, name='employee_equipment_partial'),
     
+    # === AD Webhook и уведомления ===
+    path('ad-webhook/', views.ad_lockout_webhook, name='ad_lockout_webhook'),
+    path('staff/check-notifications/', views.check_notifications, name='check_notifications'),
+    path('staff/remove-notification/', views.remove_notification, name='remove_notification'),
+    
     # === Provisioning маршруты ===
     path('provisioning/', views_provisioning.provisioning_dashboard, name='provisioning_dashboard'),
     path('provisioning/generate_config/', views_provisioning.generate_config, name='generate_config'),
@@ -34,5 +38,9 @@ urlpatterns = [
     path('provisioning/create_ad_account/<int:employee_id>/', views_provisioning.provisioning_create_ad_account, name='provisioning_create_ad_account'),
     path('provisioning/send_welcome_email/<int:employee_id>/', views_provisioning.provisioning_send_welcome_email, name='provisioning_send_welcome_email'),
     path('employee/<int:employee_id>/equipment/json/', views_ajax.employee_equipment_json, name='employee_equipment_json'),
+
+    path('employee/<int:employee_id>/ad-status/', views.get_ad_status, name='employee_ad_status'),
+    path('employee/<int:employee_id>/unlock-ad/', views.unlock_ad_account, name='unlock_ad_account'),
+    
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

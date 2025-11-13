@@ -211,8 +211,21 @@
     </div>
   </fieldset>
 
+  <!-- В карточке сотрудника -->
+  <div class="border p-4 mb-6">
+      <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-semibold">Статус AD 
+              <span class="text-xs text-green-400">(real-time)</span>
+          </h3>
+          <button onclick="checkADStatus({{ employee.pk }})" class="px-3 py-1 bg-blue-500 text-white rounded text-sm">
+              🔄 Обновить
+          </button>
+      </div>
+      <div id="ad-status-{{ employee.pk }}" class="text-sm">
+          <p class="text-gray-500">Загрузка статуса...</p>
+      </div>
+  </div>
 
-  
   <!-- Кнопки действий -->
   <div class="mt-6 flex flex-wrap gap-2">
     <a href="{% url 'employee_edit' employee.pk %}" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Редактировать</a>
@@ -672,4 +685,79 @@ function goToProvisioning(employeeId, fio) {
   const url = `/provisioning/?employee_id=${employeeId}`;
   window.location.href = url;
 }
+let eventSource = null;
+const employeeId = {{ employee.pk }};
+
+/**
+ * Проверяет статус AD пользователя
+ */
+function checkADStatus(employeeId) {
+    const statusDiv = document.getElementById(`ad-status-${employeeId}`);
+    statusDiv.innerHTML = '<p class="text-blue-500">Проверяем статус AD...</p>';
+    
+    fetch(`/employee/${employeeId}/ad-status/`)
+        .then(r => r.json())
+        .then(data => {
+            updateADStatusDisplay(employeeId, data);
+        })
+        .catch(error => {
+            statusDiv.innerHTML = `<p class="text-red-500">❌ Ошибка: ${error}</p>`;
+        });
+}
+
+/**
+ * Обновляет отображение статуса AD
+ */
+function updateADStatusDisplay(employeeId, data) {
+    const statusDiv = document.getElementById(`ad-status-${employeeId}`);
+    
+    if (data.error) {
+        statusDiv.innerHTML = `<p class="text-red-500">❌ ${data.error}</p>`;
+    } else if (!data.found) {
+        statusDiv.innerHTML = '<p class="text-yellow-500">⚠ Пользователь не найден в AD</p>';
+    } else {
+        let html = `<p>🔓 <span class="${data.locked ? 'text-red-500' : 'text-green-500'}">`;
+        html += `${data.locked ? 'Заблокирован' : 'Активен'}</span>`;
+        html += ` <span class="text-gray-400 text-xs">(${new Date().toLocaleTimeString()})</span></p>`;
+        
+        if (data.locked) {
+            html += `<button onclick="unlockAD(${employeeId})" class="mt-2 px-3 py-1 bg-green-500 text-white rounded text-sm">Разблокировать</button>`;
+        }
+        
+        statusDiv.innerHTML = html;
+    }
+}
+
+/**
+ * Разблокирует пользователя в AD
+ */
+function unlockAD(employeeId) {
+    const statusDiv = document.getElementById(`ad-status-${employeeId}`);
+    statusDiv.innerHTML = '<p class="text-blue-500">Разблокируем...</p>';
+    
+    fetch(`/employee/${employeeId}/unlock-ad/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.innerHTML = `<p class="text-green-500">✅ ${data.message}</p>`;
+            // Через 2 секунды обновляем статус
+            setTimeout(() => checkADStatus(employeeId), 2000);
+        } else {
+            statusDiv.innerHTML = `<p class="text-red-500">❌ ${data.error}</p>`;
+        }
+    });
+}
+
+// Запускаем при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    if (employeeId) {
+        // Сразу загружаем статус
+        checkADStatus(employeeId);
+    }
+});
 </script>
