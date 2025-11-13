@@ -24,7 +24,7 @@ urlpatterns = [
     path('employee/<int:employee_id>/equipment/', views_ajax.employee_equipment_partial, name='employee_equipment_partial'),
     
     # === AD Webhook и уведомления ===
-    path('ad-webhook/', views.ad_lockout_webhook, name='ad_lockout_webhook'),
+    path('staff/ad-webhook/', views.ad_lockout_webhook, name='ad_lockout_webhook'),
     path('staff/check-notifications/', views.check_notifications, name='check_notifications'),
     path('staff/remove-notification/', views.remove_notification, name='remove_notification'),
     
